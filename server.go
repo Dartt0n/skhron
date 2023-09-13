@@ -19,28 +19,32 @@ func NewServer(addr string) *Server {
 }
 
 func (s *Server) Run() {
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		var resp ServerResponse
-
-		switch r.Method {
-		case "GET":
-			resp = s.get(w, r)
-		case "POST":
-			resp = s.post(w, r)
-		case "PUT":
-			resp = s.put(w, r)
-		case "DELETE":
-			resp = s.delete(w, r)
-		}
-
-		w.WriteHeader(resp.Status)
-		w.Write(resp.Body)
-	})
+	http.HandleFunc("/", s.Serve)
 
 	http.ListenAndServe(s.addr, nil)
 }
 
-func (s *Server) get(w http.ResponseWriter, r *http.Request) ServerResponse {
+func (s *Server) Serve(w http.ResponseWriter, r *http.Request) {
+	var resp ServerResponse
+
+	switch r.Method {
+	case http.MethodGet:
+		resp = s.serveGet(w, r)
+	case http.MethodPost:
+		resp = s.servePost(w, r)
+	case http.MethodPut:
+		resp = s.servePut(w, r)
+	case http.MethodDelete:
+		resp = s.serveDelete(w, r)
+	default:
+		resp = ServerResponse{Status: 405, Body: []byte("method not allowed")}
+	}
+
+	w.WriteHeader(resp.Status)
+	w.Write(resp.Body)
+}
+
+func (s *Server) serveGet(w http.ResponseWriter, r *http.Request) ServerResponse {
 	key := strings.TrimPrefix(r.URL.Path, "/")
 
 	value, err := s.strg.Get(key)
@@ -51,7 +55,7 @@ func (s *Server) get(w http.ResponseWriter, r *http.Request) ServerResponse {
 	return ServerResponse{Status: 200, Body: value}
 }
 
-func (s *Server) post(w http.ResponseWriter, r *http.Request) ServerResponse {
+func (s *Server) servePost(w http.ResponseWriter, r *http.Request) ServerResponse {
 	key := strings.TrimPrefix(r.URL.Path, "/")
 
 	if s.strg.Exists(key) {
@@ -75,7 +79,7 @@ func (s *Server) post(w http.ResponseWriter, r *http.Request) ServerResponse {
 	return ServerResponse{Status: 201, Body: []byte{}}
 }
 
-func (s *Server) delete(w http.ResponseWriter, r *http.Request) ServerResponse {
+func (s *Server) serveDelete(w http.ResponseWriter, r *http.Request) ServerResponse {
 	key := strings.TrimPrefix(r.URL.Path, "/")
 
 	if err := s.strg.Delete(key); err != nil {
@@ -85,7 +89,7 @@ func (s *Server) delete(w http.ResponseWriter, r *http.Request) ServerResponse {
 	return ServerResponse{Status: 204, Body: []byte{}}
 }
 
-func (s *Server) put(w http.ResponseWriter, r *http.Request) ServerResponse {
+func (s *Server) servePut(w http.ResponseWriter, r *http.Request) ServerResponse {
 	key := strings.TrimPrefix(r.URL.Path, "/")
 
 	if !s.strg.Exists(key) {
