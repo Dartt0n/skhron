@@ -11,6 +11,8 @@ type Server struct {
 	addr string
 }
 
+// NewServer function creates a new server instance with a
+// specified address and initializes a new in-memory storage.
 func NewServer(addr string) *Server {
 	return &Server{
 		strg: NewStorage(),
@@ -18,24 +20,28 @@ func NewServer(addr string) *Server {
 	}
 }
 
+// Run function sets up the server to listen for specified address and handle requests
 func (s *Server) Run() {
 	http.HandleFunc("/", s.Serve)
 
 	http.ListenAndServe(s.addr, nil)
 }
 
+// Serve function is a handler for incoming requests.
+// It calls a proper handler function based on request method
+// and writes the status code and response body to the ReponseWriter
 func (s *Server) Serve(w http.ResponseWriter, r *http.Request) {
 	var resp ServerResponse
 
 	switch r.Method {
 	case http.MethodGet:
-		resp = s.serveGet(w, r)
+		resp = s.serveGet(r)
 	case http.MethodPost:
-		resp = s.servePost(w, r)
+		resp = s.servePost(r)
 	case http.MethodPut:
-		resp = s.servePut(w, r)
+		resp = s.servePut(r)
 	case http.MethodDelete:
-		resp = s.serveDelete(w, r)
+		resp = s.serveDelete(r)
 	default:
 		resp = ServerResponse{Status: 405, Body: []byte("method not allowed")}
 	}
@@ -44,7 +50,12 @@ func (s *Server) Serve(w http.ResponseWriter, r *http.Request) {
 	w.Write(resp.Body)
 }
 
-func (s *Server) serveGet(w http.ResponseWriter, r *http.Request) ServerResponse {
+// serveGet is a function that process GET /:key requets.
+// It removes the prefix "/" to obtain the `key` parameter.
+// It tries to fetch the value by the specified key from storage.
+// If the key is not present, HTTP 404 status code is returned.
+// On success, the value (bytes) is returned with HTTP 200 status code.
+func (s *Server) serveGet(r *http.Request) ServerResponse {
 	key := strings.TrimPrefix(r.URL.Path, "/")
 
 	value, err := s.strg.Get(key)
@@ -55,7 +66,14 @@ func (s *Server) serveGet(w http.ResponseWriter, r *http.Request) ServerResponse
 	return ServerResponse{Status: 200, Body: value}
 }
 
-func (s *Server) servePost(w http.ResponseWriter, r *http.Request) ServerResponse {
+// servePost is a function that process POST /:key requets.
+// It removes the prefix "/" to obtain the `key` parameter.
+// It reads bytes from the request body and saves them under
+// the `key` parameter in the storage, if the key is not already present.
+// If the key is already present, HTTP 409 status code is returned.
+// If the request body is missing, HTTP 422 status code is returned.
+// On success, HTTP 201 statuc code is returned.
+func (s *Server) servePost(r *http.Request) ServerResponse {
 	key := strings.TrimPrefix(r.URL.Path, "/")
 
 	if s.strg.Exists(key) {
@@ -79,7 +97,10 @@ func (s *Server) servePost(w http.ResponseWriter, r *http.Request) ServerRespons
 	return ServerResponse{Status: 201, Body: []byte{}}
 }
 
-func (s *Server) serveDelete(w http.ResponseWriter, r *http.Request) ServerResponse {
+// serveDelete is a function that process DELETE /:key requets.
+// It removes the prefix "/" to obtain the `key` parameter.
+// It deletes the specified key from the storage and returns HTTP 204 status code.
+func (s *Server) serveDelete(r *http.Request) ServerResponse {
 	key := strings.TrimPrefix(r.URL.Path, "/")
 
 	if err := s.strg.Delete(key); err != nil {
@@ -89,7 +110,14 @@ func (s *Server) serveDelete(w http.ResponseWriter, r *http.Request) ServerRespo
 	return ServerResponse{Status: 204, Body: []byte{}}
 }
 
-func (s *Server) servePut(w http.ResponseWriter, r *http.Request) ServerResponse {
+// servePut is a function that process PUT /:key requets.
+// It removes the prefix "/" to obtain the `key` parameter.
+// It reads bytes from the request body and saves them under
+// the `key` parameter in the storage, if key is already present.
+// If key is not already present, HTTP 404 status code is returned.
+// If the request body is missing, HTTP 422 status code is returned.
+// On success, HTTP 204 statuc code is returned.
+func (s *Server) servePut(r *http.Request) ServerResponse {
 	key := strings.TrimPrefix(r.URL.Path, "/")
 
 	if !s.strg.Exists(key) {
