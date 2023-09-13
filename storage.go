@@ -46,3 +46,11 @@ func (s *Storage) Delete(key string) error {
 
 	return nil
 }
+
+func (s *Storage) Exists(key string) bool {
+	s._datamu.Lock()
+	defer s._datamu.Unlock()
+
+	_, exist := s.data[key]
+	return exist
+}

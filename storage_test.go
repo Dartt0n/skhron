@@ -96,3 +96,30 @@ func TestStorageDeleteNonExisting(t *testing.T) {
 		t.Errorf("delete failed: %v", err)
 	}
 }
+
+func TestStorageExistExisting(t *testing.T) {
+	s := NewStorage()
+
+	var testValue uint32 = 231
+
+	bytes := make([]byte, 4)
+	binary.NativeEndian.PutUint32(bytes, testValue)
+
+	if err := s.Put("test-exist-existing", bytes); err != nil {
+		t.Errorf("put failed: %v", err)
+	}
+
+	value := s.Exists("test-exist-existing")
+	if value != true {
+		t.Errorf("exists failed")
+	}
+}
+
+func TestStorageExistNonExisting(t *testing.T) {
+	s := NewStorage()
+
+	value := s.Exists("test-exist-non-existing")
+	if value != false {
+		t.Errorf("exists failed")
+	}
+}
