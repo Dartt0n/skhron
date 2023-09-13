@@ -6,6 +6,7 @@ import (
 )
 
 func TestStoragePutGetNew(t *testing.T) {
+	t.Parallel()
 	s := NewStorage()
 
 	var testValue uint32 = 150645
@@ -29,6 +30,7 @@ func TestStoragePutGetNew(t *testing.T) {
 }
 
 func TestStoragePutGetOverride(t *testing.T) {
+	t.Parallel()
 	s := NewStorage()
 
 	var testValue uint32 = 12312
@@ -57,6 +59,7 @@ func TestStoragePutGetOverride(t *testing.T) {
 }
 
 func TestStorageGetUnknown(t *testing.T) {
+	t.Parallel()
 	s := NewStorage()
 
 	value, err := s.Get("test-get-unknown")
@@ -66,6 +69,7 @@ func TestStorageGetUnknown(t *testing.T) {
 }
 
 func TestStorageDeleteExisting(t *testing.T) {
+	t.Parallel()
 	s := NewStorage()
 
 	var testValue uint32 = 150645
@@ -89,6 +93,7 @@ func TestStorageDeleteExisting(t *testing.T) {
 }
 
 func TestStorageDeleteNonExisting(t *testing.T) {
+	t.Parallel()
 	s := NewStorage()
 
 	err := s.Delete("test-delete-nonexisting")
@@ -98,6 +103,7 @@ func TestStorageDeleteNonExisting(t *testing.T) {
 }
 
 func TestStorageExistExisting(t *testing.T) {
+	t.Parallel()
 	s := NewStorage()
 
 	var testValue uint32 = 231
@@ -116,6 +122,7 @@ func TestStorageExistExisting(t *testing.T) {
 }
 
 func TestStorageExistNonExisting(t *testing.T) {
+	t.Parallel()
 	s := NewStorage()
 
 	value := s.Exists("test-exist-non-existing")

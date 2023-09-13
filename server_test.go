@@ -50,6 +50,7 @@ func assertStatus(t *testing.T, name string, rec *httptest.ResponseRecorder, sta
 }
 
 func TestServerMethodNowAllowed(t *testing.T) {
+	t.Parallel()
 	server := NewServer("")
 
 	req := httptest.NewRequest(http.MethodHead, "/", nil)
@@ -61,6 +62,7 @@ func TestServerMethodNowAllowed(t *testing.T) {
 }
 
 func TestServerGetNotFound(t *testing.T) {
+	t.Parallel()
 	server := NewServer("")
 
 	rec := getRequest(server, "/test")
@@ -68,6 +70,7 @@ func TestServerGetNotFound(t *testing.T) {
 }
 
 func TestServerGetPostSuccess(t *testing.T) {
+	t.Parallel()
 	server := NewServer("")
 	expected := "hello world"
 
@@ -84,6 +87,7 @@ func TestServerGetPostSuccess(t *testing.T) {
 }
 
 func TestServerPostCreated(t *testing.T) {
+	t.Parallel()
 	server := NewServer("")
 
 	rec := postRequest(server, "/test", []byte("hello world"))
@@ -91,6 +95,7 @@ func TestServerPostCreated(t *testing.T) {
 }
 
 func TestServerPostConflict(t *testing.T) {
+	t.Parallel()
 	server := NewServer("")
 
 	rec := postRequest(server, "/test", []byte("hello world"))
@@ -101,6 +106,7 @@ func TestServerPostConflict(t *testing.T) {
 }
 
 func TestServerDelete(t *testing.T) {
+	t.Parallel()
 	server := NewServer("")
 
 	rec := postRequest(server, "/test", []byte("hello world"))
@@ -117,6 +123,7 @@ func TestServerDelete(t *testing.T) {
 }
 
 func TestServerPutUncreated(t *testing.T) {
+	t.Parallel()
 	server := NewServer("")
 
 	rec := putRequest(server, "/test", []byte("hello world"))
@@ -124,6 +131,7 @@ func TestServerPutUncreated(t *testing.T) {
 }
 
 func TestServerPutSucess(t *testing.T) {
+	t.Parallel()
 	server := NewServer("")
 
 	rec := postRequest(server, "/test", []byte("hello world"))
