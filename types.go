@@ -5,10 +5,12 @@ type ServerResponse struct {
 	Body   []byte
 }
 
-type ErrorResponse struct {
-	Error string `json:"error"`
+type PostRequest struct {
+	Data string `json:"data"`
+	TTL  int    `json:"ttl"` // TTL in seconds
 }
 
-type SuccessResponse struct {
-	Success bool `json:"success"`
+type PutRequest struct {
+	Data string `json:"data"`
+	TTL  int    `json:"ttl"` // TTL in seconds
 }

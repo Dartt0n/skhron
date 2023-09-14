@@ -2,7 +2,7 @@ package main
 
 import (
 	"context"
-	"io"
+	"encoding/json"
 	"log"
 	"net"
 	"net/http"
@@ -114,12 +114,12 @@ func (s *Server) servePost(r *http.Request) ServerResponse {
 	}
 	defer r.Body.Close()
 
-	value, err := io.ReadAll(r.Body)
-	if err != nil {
-		return ServerResponse{Status: 500, Body: []byte(err.Error())}
+	var value PostRequest
+	if err := json.NewDecoder(r.Body).Decode(&value); err != nil {
+		return ServerResponse{Status: 422, Body: []byte(err.Error())}
 	}
 
-	if err := s.strg.Put(key, value, time.Second); err != nil {
+	if err := s.strg.Put(key, []byte(value.Data), time.Duration(value.TTL)*time.Second); err != nil {
 		return ServerResponse{Status: 500, Body: []byte(err.Error())}
 	}
 
@@ -158,12 +158,12 @@ func (s *Server) servePut(r *http.Request) ServerResponse {
 	}
 	defer r.Body.Close()
 
-	value, err := io.ReadAll(r.Body)
-	if err != nil {
-		return ServerResponse{Status: 500, Body: []byte(err.Error())}
+	var value PutRequest
+	if err := json.NewDecoder(r.Body).Decode(&value); err != nil {
+		return ServerResponse{Status: 422, Body: []byte(err.Error())}
 	}
 
-	if err := s.strg.Put(key, value, time.Second); err != nil {
+	if err := s.strg.Put(key, []byte(value.Data), time.Duration(value.TTL)*time.Second); err != nil {
 		return ServerResponse{Status: 500, Body: []byte(err.Error())}
 	}
 

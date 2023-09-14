@@ -2,13 +2,18 @@ package main
 
 import (
 	"bytes"
+	"context"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 )
 
-func postRequest(s *Server, path string, body []byte) *httptest.ResponseRecorder {
-	req := httptest.NewRequest(http.MethodPost, path, bytes.NewReader(body))
+func postRequest(s *Server, path string, data []byte, ttl int) *httptest.ResponseRecorder {
+
+	payload := []byte(fmt.Sprintf(`{"data": "%s", "ttl": %d}`, string(data), ttl))
+	req := httptest.NewRequest(http.MethodPost, path, bytes.NewReader(payload))
 	rec := httptest.NewRecorder()
 
 	s.Serve(rec, req)
@@ -16,8 +21,10 @@ func postRequest(s *Server, path string, body []byte) *httptest.ResponseRecorder
 	return rec
 }
 
-func putRequest(s *Server, path string, body []byte) *httptest.ResponseRecorder {
-	req := httptest.NewRequest(http.MethodPut, path, bytes.NewReader(body))
+func putRequest(s *Server, path string, data []byte, ttl int) *httptest.ResponseRecorder {
+
+	payload := []byte(fmt.Sprintf(`{"data": "%s", "ttl": %d}`, string(data), ttl))
+	req := httptest.NewRequest(http.MethodPut, path, bytes.NewReader(payload))
 	rec := httptest.NewRecorder()
 
 	s.Serve(rec, req)
@@ -45,7 +52,7 @@ func deleteRequest(s *Server, path string) *httptest.ResponseRecorder {
 
 func assertStatus(t *testing.T, name string, rec *httptest.ResponseRecorder, status int) {
 	if rec.Code != status {
-		t.Errorf("%s expected code %d, got %d", name, status, rec.Code)
+		t.Errorf("%s expected code %d, got %d with %v", name, status, rec.Code, rec.Body)
 	}
 }
 
@@ -71,10 +78,11 @@ func TestServerGetNotFound(t *testing.T) {
 
 func TestServerGetPostSuccess(t *testing.T) {
 	t.Parallel()
+	// Dont start clean up process for tests
 	server := NewServer("", NewStorage())
 	expected := "hello world"
 
-	rec := postRequest(server, "/test", []byte(expected))
+	rec := postRequest(server, "/test", []byte(expected), 0)
 	assertStatus(t, "POST /test", rec, http.StatusCreated)
 
 	rec = getRequest(server, "/test")
@@ -90,7 +98,7 @@ func TestServerPostCreated(t *testing.T) {
 	t.Parallel()
 	server := NewServer("", NewStorage())
 
-	rec := postRequest(server, "/test", []byte("hello world"))
+	rec := postRequest(server, "/test", []byte("hello world"), 0)
 	assertStatus(t, "POST /test", rec, http.StatusCreated)
 }
 
@@ -98,10 +106,10 @@ func TestServerPostConflict(t *testing.T) {
 	t.Parallel()
 	server := NewServer("", NewStorage())
 
-	rec := postRequest(server, "/test", []byte("hello world"))
+	rec := postRequest(server, "/test", []byte("hello world"), 0)
 	assertStatus(t, "POST /test", rec, http.StatusCreated)
 
-	rec = postRequest(server, "/test", []byte("hello world"))
+	rec = postRequest(server, "/test", []byte("hello world"), 0)
 	assertStatus(t, "POST /test", rec, http.StatusConflict)
 }
 
@@ -109,7 +117,7 @@ func TestServerDelete(t *testing.T) {
 	t.Parallel()
 	server := NewServer("", NewStorage())
 
-	rec := postRequest(server, "/test", []byte("hello world"))
+	rec := postRequest(server, "/test", []byte("hello world"), 0)
 	assertStatus(t, "POST /test", rec, http.StatusCreated)
 
 	rec = getRequest(server, "/test")
@@ -126,15 +134,15 @@ func TestServerPutUncreated(t *testing.T) {
 	t.Parallel()
 	server := NewServer("", NewStorage())
 
-	rec := putRequest(server, "/test", []byte("hello world"))
+	rec := putRequest(server, "/test", []byte("hello world"), 0)
 	assertStatus(t, "PUT /test", rec, http.StatusNotFound)
 }
 
-func TestServerPutSucess(t *testing.T) {
+func TestServerPutSuccess(t *testing.T) {
 	t.Parallel()
 	server := NewServer("", NewStorage())
 
-	rec := postRequest(server, "/test", []byte("hello world"))
+	rec := postRequest(server, "/test", []byte("hello world"), 0)
 	assertStatus(t, "POST /test", rec, http.StatusCreated)
 
 	rec = getRequest(server, "/test")
@@ -145,7 +153,7 @@ func TestServerPutSucess(t *testing.T) {
 		t.Errorf("GET /test expteted body %s, got %s", "hello world", value)
 	}
 
-	rec = putRequest(server, "/test", []byte("new data"))
+	rec = putRequest(server, "/test", []byte("new data"), 0)
 	assertStatus(t, "PUT /test", rec, http.StatusNoContent)
 
 	rec = getRequest(server, "/test")
@@ -155,4 +163,62 @@ func TestServerPutSucess(t *testing.T) {
 	if value != "new data" {
 		t.Errorf("GET /test expteted body %s, got %s", "new data", value)
 	}
+}
+
+func TestServerPostTTL(t *testing.T) {
+	t.Parallel()
+
+	ctx, cancel := context.WithCancel(context.Background())
+
+	storage := NewStorage()
+	server := NewServer("", storage)
+
+	done := make(chan struct{})
+	go storage.CleaningProcess(ctx, 500*time.Millisecond, done)
+
+	rec := postRequest(server, "/test", []byte("test"), 1)
+	assertStatus(t, "POST /test", rec, http.StatusCreated)
+
+	rec = getRequest(server, "/test")
+	assertStatus(t, "GET /test", rec, http.StatusOK)
+
+	time.Sleep(2 * time.Second)
+
+	rec = getRequest(server, "/test")
+	assertStatus(t, "GET /test", rec, http.StatusNotFound)
+
+	cancel()
+	<-done
+}
+
+func TestServerPutTTL(t *testing.T) {
+	t.Parallel()
+
+	ctx, cancel := context.WithCancel(context.Background())
+
+	storage := NewStorage()
+	server := NewServer("", storage)
+
+	done := make(chan struct{})
+	go storage.CleaningProcess(ctx, 500*time.Millisecond, done)
+
+	rec := postRequest(server, "/test", []byte("test"), 10000)
+	assertStatus(t, "POST /test", rec, http.StatusCreated)
+
+	rec = getRequest(server, "/test")
+	assertStatus(t, "GET /test", rec, http.StatusOK)
+
+	rec = putRequest(server, "/test", []byte("test"), 1)
+	assertStatus(t, "PUT /test", rec, http.StatusNoContent)
+
+	rec = getRequest(server, "/test")
+	assertStatus(t, "GET /test", rec, http.StatusOK)
+
+	time.Sleep(2 * time.Second)
+
+	rec = getRequest(server, "/test")
+	assertStatus(t, "GET /test", rec, http.StatusNotFound)
+
+	cancel()
+	<-done
 }
