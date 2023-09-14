@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/binary"
 	"testing"
+	"time"
 )
 
 func TestStoragePutGetNew(t *testing.T) {
@@ -14,7 +15,7 @@ func TestStoragePutGetNew(t *testing.T) {
 	bytes := make([]byte, 4)
 	binary.NativeEndian.PutUint32(bytes, testValue)
 
-	if err := s.Put("test-new", bytes); err != nil {
+	if err := s.Put("test-new", bytes, time.Second); err != nil {
 		t.Errorf("put failed: %v", err)
 	}
 
@@ -38,12 +39,12 @@ func TestStoragePutGetOverride(t *testing.T) {
 	bytes := make([]byte, 4)
 	binary.NativeEndian.PutUint32(bytes, 100500)
 
-	if err := s.Put("test-override", bytes); err != nil {
+	if err := s.Put("test-override", bytes, time.Second); err != nil {
 		t.Errorf("put failed: %v", err)
 	}
 
 	binary.NativeEndian.PutUint32(bytes, testValue)
-	if err := s.Put("test-override", bytes); err != nil {
+	if err := s.Put("test-override", bytes, time.Second); err != nil {
 		t.Errorf("put failed: %v", err)
 	}
 
@@ -77,7 +78,7 @@ func TestStorageDeleteExisting(t *testing.T) {
 	bytes := make([]byte, 4)
 	binary.NativeEndian.PutUint32(bytes, testValue)
 
-	if err := s.Put("test-delete-existing", bytes); err != nil {
+	if err := s.Put("test-delete-existing", bytes, time.Second); err != nil {
 		t.Errorf("put failed: %v", err)
 	}
 
@@ -111,7 +112,7 @@ func TestStorageExistExisting(t *testing.T) {
 	bytes := make([]byte, 4)
 	binary.NativeEndian.PutUint32(bytes, testValue)
 
-	if err := s.Put("test-exist-existing", bytes); err != nil {
+	if err := s.Put("test-exist-existing", bytes, time.Second); err != nil {
 		t.Errorf("put failed: %v", err)
 	}
 

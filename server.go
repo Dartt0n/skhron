@@ -119,7 +119,7 @@ func (s *Server) servePost(r *http.Request) ServerResponse {
 		return ServerResponse{Status: 500, Body: []byte(err.Error())}
 	}
 
-	if err := s.strg.Put(key, value); err != nil {
+	if err := s.strg.Put(key, value, time.Second); err != nil {
 		return ServerResponse{Status: 500, Body: []byte(err.Error())}
 	}
 
@@ -163,7 +163,7 @@ func (s *Server) servePut(r *http.Request) ServerResponse {
 		return ServerResponse{Status: 500, Body: []byte(err.Error())}
 	}
 
-	if err := s.strg.Put(key, value); err != nil {
+	if err := s.strg.Put(key, value, time.Second); err != nil {
 		return ServerResponse{Status: 500, Body: []byte(err.Error())}
 	}
 
