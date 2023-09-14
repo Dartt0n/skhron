@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/binary"
 	"testing"
 	"time"
@@ -129,5 +130,32 @@ func TestStorageExistNonExisting(t *testing.T) {
 	value := s.Exists("test-exist-non-existing")
 	if value != false {
 		t.Errorf("exists failed")
+	}
+}
+
+func TestStorageCleanup(t *testing.T) {
+	t.Parallel()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan struct{})
+
+	s := NewStorage()
+	go s.CleaningProcess(ctx, 500*time.Millisecond, done)
+
+	if err := s.Put("test", []byte("hello world"), 500*time.Millisecond); err != nil {
+		t.Errorf("put failed: %v", err)
+	}
+
+	if !s.Exists("test") {
+		t.Errorf("exists failed")
+	}
+
+	time.Sleep(1 * time.Second)
+	cancel()
+	<-done
+
+	// clean up should be performed by this time
+	if s.Exists("test") {
+		t.Errorf("cleanup failed")
 	}
 }

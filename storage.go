@@ -112,7 +112,7 @@ func (s *Storage) CleanUp() {
 // The `CleaningProcess` function is a goroutine that runs
 // in the background and periodically calls the
 // `CleanUp` function of the `Storage` struct.
-func (s *Storage) CleaningProcess(ctx context.Context, done chan struct{}) {
+func (s *Storage) CleaningProcess(ctx context.Context, period time.Duration, done chan struct{}) {
 loop:
 	for {
 		select {
@@ -120,7 +120,7 @@ loop:
 			break loop
 		default:
 			s.CleanUp()
-			time.Sleep(10 * time.Second)
+			time.Sleep(period)
 		}
 	}
 

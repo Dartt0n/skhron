@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 )
 
 func main() {
@@ -19,7 +20,7 @@ func main() {
 
 	log.Println("Running storage cleaning process in goroutine")
 	done := make(chan struct{})
-	go storage.CleaningProcess(ctx, done)
+	go storage.CleaningProcess(ctx, 10*time.Second, done)
 
 	c := make(chan os.Signal)
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
