@@ -15,7 +15,7 @@ type Storage struct {
 	data    map[string][]byte
 
 	_ttlmu sync.Mutex
-	ttl    heap.Interface
+	ttl    *ExpQueue
 }
 
 // NewStorage function returns a new instance of the Storage struct
@@ -38,11 +38,25 @@ func NewStorage() *Storage {
 func (s *Storage) Put(key string, value []byte, ttl time.Duration) error {
 	s._datamu.Lock()
 	defer s._datamu.Unlock()
-	s.data[key] = value
-
 	s._ttlmu.Lock()
 	defer s._ttlmu.Unlock()
-	heap.Push(s.ttl, &ItemTTL{key: key, exp: time.Now().Add(ttl)})
+
+	s.data[key] = value
+
+	// Find previous item
+	index := -1
+	for i := 0; i < s.ttl.Len(); i++ {
+		if (*s.ttl)[i].key == key {
+			index = i
+			(*s.ttl)[index].exp = time.Now().Add(ttl)
+		}
+	}
+
+	if index == -1 {
+		heap.Push(s.ttl, &ItemTTL{key: key, exp: time.Now().Add(ttl)})
+	} else {
+		heap.Fix(s.ttl, index)
+	}
 
 	return nil
 }
@@ -90,6 +104,7 @@ func (s *Storage) Exists(key string) bool {
 func (s *Storage) CleanUp() {
 	s._ttlmu.Lock()
 	defer s._ttlmu.Unlock()
+
 	log.Printf("Storage cleanup started\n")
 
 	now := time.Now()
@@ -112,6 +127,9 @@ func (s *Storage) CleanUp() {
 // The `CleaningProcess` function is a goroutine that runs
 // in the background and periodically calls the
 // `CleanUp` function of the `Storage` struct.
+// It works until ctx.Done() is called.
+// It puts into done channel when it finishes.
+// It runs clean up process every `period` time duration.
 func (s *Storage) CleaningProcess(ctx context.Context, period time.Duration, done chan struct{}) {
 loop:
 	for {
