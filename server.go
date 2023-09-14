@@ -1,30 +1,57 @@
 package main
 
 import (
+	"context"
 	"io"
+	"log"
+	"net"
 	"net/http"
 	"strings"
+	"time"
 )
 
 type Server struct {
 	strg *Storage
 	addr string
+	serv *http.Server
 }
 
 // NewServer function creates a new server instance with a
 // specified address and initializes a new in-memory storage.
-func NewServer(addr string) *Server {
+func NewServer(addr string, storage *Storage) *Server {
 	return &Server{
-		strg: NewStorage(),
+		strg: storage,
 		addr: addr,
+		serv: nil,
 	}
 }
 
-// Run function sets up the server to listen for specified address and handle requests
-func (s *Server) Run() {
-	http.HandleFunc("/", s.Serve)
+// Run is a function that sets up the server to listen
+// for specified address and handle requests
+func (s *Server) Run(ctx context.Context) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/", s.Serve)
 
-	http.ListenAndServe(s.addr, nil)
+	log.Println("Creating server with provided context")
+	server := &http.Server{
+		Addr:    s.addr,
+		Handler: mux,
+		BaseContext: func(l net.Listener) context.Context {
+			ctx := context.WithoutCancel(ctx)
+			return ctx
+		},
+	}
+
+	s.serv = server
+
+	log.Println("Running http server")
+	if err := server.ListenAndServe(); err != http.ErrServerClosed {
+		log.Fatalf("Unexpected fatal error: %v", err)
+	}
+}
+func (s *Server) Shutdown(ctx context.Context) {
+	log.Println("Shutting down http server")
+	s.serv.Shutdown(ctx)
 }
 
 // Serve function is a handler for incoming requests.
@@ -45,6 +72,8 @@ func (s *Server) Serve(w http.ResponseWriter, r *http.Request) {
 	default:
 		resp = ServerResponse{Status: 405, Body: []byte("method not allowed")}
 	}
+
+	log.Printf("%s %s - %d\n", r.Method, r.URL.Path, resp.Status)
 
 	w.WriteHeader(resp.Status)
 	w.Write(resp.Body)

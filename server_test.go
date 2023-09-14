@@ -51,7 +51,7 @@ func assertStatus(t *testing.T, name string, rec *httptest.ResponseRecorder, sta
 
 func TestServerMethodNowAllowed(t *testing.T) {
 	t.Parallel()
-	server := NewServer("")
+	server := NewServer("", NewStorage())
 
 	req := httptest.NewRequest(http.MethodHead, "/", nil)
 	rec := httptest.NewRecorder()
@@ -63,7 +63,7 @@ func TestServerMethodNowAllowed(t *testing.T) {
 
 func TestServerGetNotFound(t *testing.T) {
 	t.Parallel()
-	server := NewServer("")
+	server := NewServer("", NewStorage())
 
 	rec := getRequest(server, "/test")
 	assertStatus(t, "GET /test", rec, http.StatusNotFound)
@@ -71,7 +71,7 @@ func TestServerGetNotFound(t *testing.T) {
 
 func TestServerGetPostSuccess(t *testing.T) {
 	t.Parallel()
-	server := NewServer("")
+	server := NewServer("", NewStorage())
 	expected := "hello world"
 
 	rec := postRequest(server, "/test", []byte(expected))
@@ -88,7 +88,7 @@ func TestServerGetPostSuccess(t *testing.T) {
 
 func TestServerPostCreated(t *testing.T) {
 	t.Parallel()
-	server := NewServer("")
+	server := NewServer("", NewStorage())
 
 	rec := postRequest(server, "/test", []byte("hello world"))
 	assertStatus(t, "POST /test", rec, http.StatusCreated)
@@ -96,7 +96,7 @@ func TestServerPostCreated(t *testing.T) {
 
 func TestServerPostConflict(t *testing.T) {
 	t.Parallel()
-	server := NewServer("")
+	server := NewServer("", NewStorage())
 
 	rec := postRequest(server, "/test", []byte("hello world"))
 	assertStatus(t, "POST /test", rec, http.StatusCreated)
@@ -107,7 +107,7 @@ func TestServerPostConflict(t *testing.T) {
 
 func TestServerDelete(t *testing.T) {
 	t.Parallel()
-	server := NewServer("")
+	server := NewServer("", NewStorage())
 
 	rec := postRequest(server, "/test", []byte("hello world"))
 	assertStatus(t, "POST /test", rec, http.StatusCreated)
@@ -124,7 +124,7 @@ func TestServerDelete(t *testing.T) {
 
 func TestServerPutUncreated(t *testing.T) {
 	t.Parallel()
-	server := NewServer("")
+	server := NewServer("", NewStorage())
 
 	rec := putRequest(server, "/test", []byte("hello world"))
 	assertStatus(t, "PUT /test", rec, http.StatusNotFound)
@@ -132,7 +132,7 @@ func TestServerPutUncreated(t *testing.T) {
 
 func TestServerPutSucess(t *testing.T) {
 	t.Parallel()
-	server := NewServer("")
+	server := NewServer("", NewStorage())
 
 	rec := postRequest(server, "/test", []byte("hello world"))
 	assertStatus(t, "POST /test", rec, http.StatusCreated)
