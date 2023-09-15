@@ -1,4 +1,5 @@
 # Skhron
+![go workflow](https://github.com/dartt0n/skhron/actions/workflows/go.yml/badge.svg)
 
 Skhron is a simple in-memory storage with active cleaning and rest http api
 
