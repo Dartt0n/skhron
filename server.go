@@ -44,7 +44,7 @@ func (s *Server) Run(ctx context.Context) {
 
 	s.serv = server
 
-	log.Println("Running http server")
+	log.Printf("Running http server on address %s\n", s.addr)
 	if err := server.ListenAndServe(); err != http.ErrServerClosed {
 		log.Fatalf("Unexpected fatal error: %v", err)
 	}

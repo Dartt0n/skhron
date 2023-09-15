@@ -131,6 +131,7 @@ func (s *Storage) CleanUp() {
 // It puts into done channel when it finishes.
 // It runs clean up process every `period` time duration.
 func (s *Storage) CleaningProcess(ctx context.Context, period time.Duration, done chan struct{}) {
+	log.Printf("Starting cleaning up process with period %.02f sec\n", period.Seconds())
 loop:
 	for {
 		select {
