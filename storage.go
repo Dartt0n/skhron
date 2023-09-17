@@ -21,15 +21,15 @@ type Storage struct {
 // NewStorage function returns a new instance of the Storage struct
 // with an initialized data map and a mutex.
 func NewStorage() *Storage {
-	s := &Storage{
+	storage := &Storage{
 		_datamu: sync.Mutex{},
 		data:    make(map[string][]byte),
 
 		_ttlmu: sync.Mutex{},
 		ttl:    NewExpQueue(),
 	}
-	heap.Init(s.ttl)
-	return s
+	heap.Init(storage.ttl)
+	return storage
 }
 
 // Put is a function which puts a value in the data map under a key.

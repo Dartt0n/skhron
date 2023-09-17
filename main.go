@@ -34,10 +34,10 @@ func main() {
 	}
 
 	storage := NewStorage()
-	s := NewServer(addr, storage)
+	server := NewServer(addr, storage)
 
 	log.Println("Running HTTP server in goroutine")
-	go s.Run(ctx)
+	go server.Run(ctx)
 
 	log.Println("Running storage cleaning process in goroutine")
 	done := make(chan struct{})
@@ -52,5 +52,5 @@ func main() {
 	log.Println("Closing all processes...")
 	cancel()
 	<-done
-	s.Shutdown(ctx)
+	server.Shutdown(ctx)
 }

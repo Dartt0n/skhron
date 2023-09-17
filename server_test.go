@@ -10,33 +10,33 @@ import (
 	"time"
 )
 
-func postRequest(s *Server, path string, data []byte, ttl int) *httptest.ResponseRecorder {
+func postRequest(server *Server, path string, data []byte, ttl int) *httptest.ResponseRecorder {
 
 	payload := []byte(fmt.Sprintf(`{"data": "%s", "ttl": %d}`, string(data), ttl))
 	req := httptest.NewRequest(http.MethodPost, path, bytes.NewReader(payload))
 	rec := httptest.NewRecorder()
 
-	s.Serve(rec, req)
+	server.Serve(rec, req)
 
 	return rec
 }
 
-func putRequest(s *Server, path string, data []byte, ttl int) *httptest.ResponseRecorder {
+func putRequest(server *Server, path string, data []byte, ttl int) *httptest.ResponseRecorder {
 
 	payload := []byte(fmt.Sprintf(`{"data": "%s", "ttl": %d}`, string(data), ttl))
 	req := httptest.NewRequest(http.MethodPut, path, bytes.NewReader(payload))
 	rec := httptest.NewRecorder()
 
-	s.Serve(rec, req)
+	server.Serve(rec, req)
 
 	return rec
 }
 
-func getRequest(s *Server, path string) *httptest.ResponseRecorder {
+func getRequest(server *Server, path string) *httptest.ResponseRecorder {
 	req := httptest.NewRequest(http.MethodGet, path, nil)
 	rec := httptest.NewRecorder()
 
-	s.Serve(rec, req)
+	server.Serve(rec, req)
 
 	return rec
 }

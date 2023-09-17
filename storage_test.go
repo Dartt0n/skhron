@@ -9,18 +9,18 @@ import (
 
 func TestStoragePutGetNew(t *testing.T) {
 	t.Parallel()
-	s := NewStorage()
+	storage := NewStorage()
 
 	var testValue uint32 = 150645
 
 	bytes := make([]byte, 4)
 	binary.NativeEndian.PutUint32(bytes, testValue)
 
-	if err := s.Put("test-new", bytes, time.Second); err != nil {
+	if err := storage.Put("test-new", bytes, time.Second); err != nil {
 		t.Errorf("put failed: %v", err)
 	}
 
-	bytes, err := s.Get("test-new")
+	bytes, err := storage.Get("test-new")
 	if err != nil {
 		t.Errorf("get failed: %v", err)
 	}
@@ -33,23 +33,23 @@ func TestStoragePutGetNew(t *testing.T) {
 
 func TestStoragePutGetOverride(t *testing.T) {
 	t.Parallel()
-	s := NewStorage()
+	storage := NewStorage()
 
 	var testValue uint32 = 12312
 
 	bytes := make([]byte, 4)
 	binary.NativeEndian.PutUint32(bytes, 100500)
 
-	if err := s.Put("test-override", bytes, time.Second); err != nil {
+	if err := storage.Put("test-override", bytes, time.Second); err != nil {
 		t.Errorf("put failed: %v", err)
 	}
 
 	binary.NativeEndian.PutUint32(bytes, testValue)
-	if err := s.Put("test-override", bytes, time.Second); err != nil {
+	if err := storage.Put("test-override", bytes, time.Second); err != nil {
 		t.Errorf("put failed: %v", err)
 	}
 
-	bytes, err := s.Get("test-override")
+	bytes, err := storage.Get("test-override")
 	if err != nil {
 		t.Errorf("get failed: %v", err)
 	}
@@ -72,23 +72,23 @@ func TestStorageGetUnknown(t *testing.T) {
 
 func TestStorageDeleteExisting(t *testing.T) {
 	t.Parallel()
-	s := NewStorage()
+	storage := NewStorage()
 
 	var testValue uint32 = 150645
 
 	bytes := make([]byte, 4)
 	binary.NativeEndian.PutUint32(bytes, testValue)
 
-	if err := s.Put("test-delete-existing", bytes, time.Second); err != nil {
+	if err := storage.Put("test-delete-existing", bytes, time.Second); err != nil {
 		t.Errorf("put failed: %v", err)
 	}
 
-	err := s.Delete("test-delete-existing")
+	err := storage.Delete("test-delete-existing")
 	if err != nil {
 		t.Errorf("delete failed: %v", err)
 	}
 
-	_, err = s.Get("test-delete-existing")
+	_, err = storage.Get("test-delete-existing")
 	if err == nil {
 		t.Errorf("delete failed. expected key \"test-delete-existing\" not to exist: %v", err)
 	}
@@ -106,18 +106,18 @@ func TestStorageDeleteNonExisting(t *testing.T) {
 
 func TestStorageExistExisting(t *testing.T) {
 	t.Parallel()
-	s := NewStorage()
+	storage := NewStorage()
 
 	var testValue uint32 = 231
 
 	bytes := make([]byte, 4)
 	binary.NativeEndian.PutUint32(bytes, testValue)
 
-	if err := s.Put("test-exist-existing", bytes, time.Second); err != nil {
+	if err := storage.Put("test-exist-existing", bytes, time.Second); err != nil {
 		t.Errorf("put failed: %v", err)
 	}
 
-	value := s.Exists("test-exist-existing")
+	value := storage.Exists("test-exist-existing")
 	if value != true {
 		t.Errorf("exists failed")
 	}
@@ -139,14 +139,14 @@ func TestStorageCleanup(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan struct{})
 
-	s := NewStorage()
-	go s.CleaningProcess(ctx, 500*time.Millisecond, done)
+	storage := NewStorage()
+	go storage.CleaningProcess(ctx, 500*time.Millisecond, done)
 
-	if err := s.Put("test", []byte("hello world"), 500*time.Millisecond); err != nil {
+	if err := storage.Put("test", []byte("hello world"), 500*time.Millisecond); err != nil {
 		t.Errorf("put failed: %v", err)
 	}
 
-	if !s.Exists("test") {
+	if !storage.Exists("test") {
 		t.Errorf("exists failed")
 	}
 
@@ -155,7 +155,7 @@ func TestStorageCleanup(t *testing.T) {
 	<-done
 
 	// clean up should be performed by this time
-	if s.Exists("test") {
+	if storage.Exists("test") {
 		t.Errorf("cleanup failed")
 	}
 }

@@ -40,6 +40,7 @@ func (s *Server) Run(ctx context.Context) {
 			ctx := context.WithoutCancel(ctx)
 			return ctx
 		},
+		ReadHeaderTimeout: time.Second,
 	}
 
 	s.serv = server
@@ -62,26 +63,26 @@ func (s *Server) Shutdown(ctx context.Context) {
 // Serve function is a handler for incoming requests.
 // It calls a proper handler function based on request method
 // and writes the status code and response body to the ReponseWriter
-func (s *Server) Serve(w http.ResponseWriter, r *http.Request) {
-	var resp ServerResponse
+func (s *Server) Serve(response http.ResponseWriter, request *http.Request) {
+	var result ServerResponse
 
-	switch r.Method {
+	switch request.Method {
 	case http.MethodGet:
-		resp = s.serveGet(r)
+		result = s.serveGet(request)
 	case http.MethodPost:
-		resp = s.servePost(r)
+		result = s.servePost(request)
 	case http.MethodPut:
-		resp = s.servePut(r)
+		result = s.servePut(request)
 	case http.MethodDelete:
-		resp = s.serveDelete(r)
+		result = s.serveDelete(request)
 	default:
-		resp = ServerResponse{Status: 405, Body: []byte("method not allowed")}
+		result = ServerResponse{Status: 405, Body: []byte("method not allowed")}
 	}
 
-	log.Printf("%s %s - %d\n", r.Method, r.URL.Path, resp.Status)
+	log.Printf("%s %s - %d\n", request.Method, request.URL.Path, result.Status)
 
-	w.WriteHeader(resp.Status)
-	if _, err := w.Write(resp.Body); err != nil {
+	response.WriteHeader(result.Status)
+	if _, err := response.Write(result.Body); err != nil {
 		log.Println("Failed to write response body!")
 	}
 }
@@ -109,20 +110,20 @@ func (s *Server) serveGet(r *http.Request) ServerResponse {
 // If the key is already present, HTTP 409 status code is returned.
 // If the request body is missing, HTTP 422 status code is returned.
 // On success, HTTP 201 statuc code is returned.
-func (s *Server) servePost(r *http.Request) ServerResponse {
-	key := strings.TrimPrefix(r.URL.Path, "/")
+func (s *Server) servePost(req *http.Request) ServerResponse {
+	key := strings.TrimPrefix(req.URL.Path, "/")
 
 	if s.strg.Exists(key) {
 		return ServerResponse{Status: 409, Body: []byte("key already exists")}
 	}
 
-	if r.Body == nil {
+	if req.Body == nil {
 		return ServerResponse{Status: 422, Body: []byte("missing request body")}
 	}
-	defer r.Body.Close()
+	defer req.Body.Close()
 
 	var value PostRequest
-	if err := json.NewDecoder(r.Body).Decode(&value); err != nil {
+	if err := json.NewDecoder(req.Body).Decode(&value); err != nil {
 		return ServerResponse{Status: 422, Body: []byte(err.Error())}
 	}
 
@@ -153,20 +154,20 @@ func (s *Server) serveDelete(r *http.Request) ServerResponse {
 // If key is not already present, HTTP 404 status code is returned.
 // If the request body is missing, HTTP 422 status code is returned.
 // On success, HTTP 204 statuc code is returned.
-func (s *Server) servePut(r *http.Request) ServerResponse {
-	key := strings.TrimPrefix(r.URL.Path, "/")
+func (s *Server) servePut(req *http.Request) ServerResponse {
+	key := strings.TrimPrefix(req.URL.Path, "/")
 
 	if !s.strg.Exists(key) {
 		return ServerResponse{Status: 404, Body: []byte("key does not exists")}
 	}
 
-	if r.Body == nil {
+	if req.Body == nil {
 		return ServerResponse{Status: 422, Body: []byte("missing request body")}
 	}
-	defer r.Body.Close()
+	defer req.Body.Close()
 
 	var value PutRequest
-	if err := json.NewDecoder(r.Body).Decode(&value); err != nil {
+	if err := json.NewDecoder(req.Body).Decode(&value); err != nil {
 		return ServerResponse{Status: 422, Body: []byte(err.Error())}
 	}
 
