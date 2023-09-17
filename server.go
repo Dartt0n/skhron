@@ -51,7 +51,12 @@ func (s *Server) Run(ctx context.Context) {
 }
 func (s *Server) Shutdown(ctx context.Context) {
 	log.Println("Shutting down http server")
-	s.serv.Shutdown(ctx)
+
+	err := s.serv.Shutdown(ctx)
+	for err != nil {
+		log.Println("Failed to shutdown http server, retrying")
+		err = s.serv.Shutdown(ctx)
+	}
 }
 
 // Serve function is a handler for incoming requests.
@@ -76,7 +81,9 @@ func (s *Server) Serve(w http.ResponseWriter, r *http.Request) {
 	log.Printf("%s %s - %d\n", r.Method, r.URL.Path, resp.Status)
 
 	w.WriteHeader(resp.Status)
-	w.Write(resp.Body)
+	if _, err := w.Write(resp.Body); err != nil {
+		log.Println("Failed to write response body!")
+	}
 }
 
 // serveGet is a function that process GET /:key requets.

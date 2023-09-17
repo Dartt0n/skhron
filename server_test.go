@@ -88,7 +88,7 @@ func TestServerGetPostSuccess(t *testing.T) {
 	rec = getRequest(server, "/test")
 	assertStatus(t, "GET /test", rec, http.StatusOK)
 
-	value := string(rec.Body.Bytes())
+	value := rec.Body.String()
 	if value != expected {
 		t.Errorf("GET /test expteted body %s, got %s", expected, value)
 	}
@@ -148,7 +148,7 @@ func TestServerPutSuccess(t *testing.T) {
 	rec = getRequest(server, "/test")
 	assertStatus(t, "GET /test", rec, http.StatusOK)
 
-	value := string(rec.Body.Bytes())
+	value := rec.Body.String()
 	if value != "hello world" {
 		t.Errorf("GET /test expteted body %s, got %s", "hello world", value)
 	}
@@ -159,7 +159,7 @@ func TestServerPutSuccess(t *testing.T) {
 	rec = getRequest(server, "/test")
 	assertStatus(t, "GET /test", rec, http.StatusOK)
 
-	value = string(rec.Body.Bytes())
+	value = rec.Body.String()
 	if value != "new data" {
 		t.Errorf("GET /test expteted body %s, got %s", "new data", value)
 	}

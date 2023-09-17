@@ -114,7 +114,9 @@ func (s *Storage) CleanUp() {
 
 		if item.exp.Before(now) {
 			log.Printf("Item with key \"%s\" expired %f sec ago, deleting\n", item.key, now.Sub(item.exp).Seconds())
-			s.Delete(item.key)
+			if err := s.Delete(item.key); err != nil {
+				log.Printf("Failed to delete item with key \"%s\"", item.key)
+			}
 		} else {
 			heap.Push(s.ttl, item)
 			break
