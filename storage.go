@@ -8,12 +8,14 @@ import (
 	"time"
 
 	"errors"
+
+	smap "github.com/go-auxiliaries/shrinking-map/pkg/shrinking-map"
 )
 
 type Storage struct {
-	mu sync.Mutex
+	mu sync.RWMutex
 
-	data map[string][]byte
+	data *smap.Map[string, []byte]
 	ttl  *ExpQueue
 }
 
@@ -21,9 +23,9 @@ type Storage struct {
 // with an initialized data map and a mutex.
 func NewStorage() *Storage {
 	storage := &Storage{
-		mu: sync.Mutex{},
+		mu: sync.RWMutex{},
 
-		data: make(map[string][]byte),
+		data: smap.New[string, []byte](100_000), // shrink map after every 100k deletions
 		ttl:  NewExpQueue(),
 	}
 	heap.Init(storage.ttl)
@@ -32,12 +34,12 @@ func NewStorage() *Storage {
 
 // Put is a function which puts a value in the data map under a key.
 // It takes the key as string and the value as byte slice.
-// This function locks _datamu mutex for its operations.
+// This function locks write & read mutex for its operations.
 func (s *Storage) Put(key string, value []byte, ttl time.Duration) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	s.data[key] = value
+	s.data.Set(key, value)
 
 	// Find previous item
 	index := -1
@@ -60,12 +62,12 @@ func (s *Storage) Put(key string, value []byte, ttl time.Duration) error {
 // Get is a function which fetches a value in the data map under a key.
 // It takes the key as string parameter.
 // If the key is not present, error is returned.
-// This function locks _datamu mutex for its operations.
+// This function locks read mutex for its operations.
 func (s *Storage) Get(key string) ([]byte, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 
-	if v, ok := s.data[key]; ok {
+	if v, ok := s.data.Get2(key); ok {
 		return v, nil
 	}
 
@@ -74,24 +76,24 @@ func (s *Storage) Get(key string) ([]byte, error) {
 
 // Delete is a function which deletes a key from the data map.
 // It takes the key as string parameter.
-// This function locks _datamu mutex for its operations.
+// This function locks read & write mutex for its operations.
 func (s *Storage) Delete(key string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	delete(s.data, key)
+	s.data.Delete(key)
 
 	return nil
 }
 
 // Exists is a function which check wheater a key is present in the data map.
 // It takes the key as string parameter.
-// This function locks _datamu mutex for its operations.
+// This function locks read mutex for its operations.
 func (s *Storage) Exists(key string) bool {
-	s.mu.Lock()
-	defer s.mu.Unlock()
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 
-	_, exist := s.data[key]
+	_, exist := s.data.Get2(key)
 	return exist
 }
 
@@ -111,7 +113,7 @@ func (s *Storage) CleanUp() {
 
 		if item.exp.Before(now) {
 			log.Printf("Item with key \"%s\" expired %f sec ago, deleting\n", item.key, now.Sub(item.exp).Seconds())
-			delete(s.data, item.key)
+			s.data.Delete(item.key)
 			deleted++
 		} else {
 			heap.Push(s.ttl, item)
@@ -119,7 +121,7 @@ func (s *Storage) CleanUp() {
 		}
 	}
 
-	log.Printf("Storage cleanup finished. %d keys deleted\n", deleted)
+	log.Printf("Storage cleanup finished. %d keys deleted, %d left in queue\n", deleted, s.ttl.Len())
 }
 
 // The `CleaningProcess` function is a goroutine that runs
