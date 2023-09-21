@@ -33,7 +33,7 @@ func (s *Server) Run(ctx context.Context) {
 	mux.HandleFunc("/", s.Serve)
 
 	log.Println("Creating server with provided context")
-	server := &http.Server{
+	s.serv = &http.Server{
 		Addr:    s.addr,
 		Handler: mux,
 		BaseContext: func(l net.Listener) context.Context {
@@ -43,10 +43,8 @@ func (s *Server) Run(ctx context.Context) {
 		ReadHeaderTimeout: time.Second,
 	}
 
-	s.serv = server
-
 	log.Printf("Running http server on address %s\n", s.addr)
-	if err := server.ListenAndServe(); err != http.ErrServerClosed {
+	if err := s.serv.ListenAndServe(); err != http.ErrServerClosed {
 		log.Fatalf("Unexpected fatal error: %v", err)
 	}
 }

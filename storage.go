@@ -25,7 +25,7 @@ func NewStorage() *Storage {
 	storage := &Storage{
 		mu: sync.RWMutex{},
 
-		data: smap.New[string, []byte](100_000), // shrink map after every 100k deletions
+		data: smap.New[string, []byte](10000), // shrink map after every 10k deletions
 		ttl:  NewExpQueue(),
 	}
 	heap.Init(storage.ttl)
