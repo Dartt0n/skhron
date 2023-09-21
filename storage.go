@@ -11,22 +11,20 @@ import (
 )
 
 type Storage struct {
-	_datamu sync.Mutex
-	data    map[string][]byte
+	mu sync.Mutex
 
-	_ttlmu sync.Mutex
-	ttl    *ExpQueue
+	data map[string][]byte
+	ttl  *ExpQueue
 }
 
 // NewStorage function returns a new instance of the Storage struct
 // with an initialized data map and a mutex.
 func NewStorage() *Storage {
 	storage := &Storage{
-		_datamu: sync.Mutex{},
-		data:    make(map[string][]byte),
+		mu: sync.Mutex{},
 
-		_ttlmu: sync.Mutex{},
-		ttl:    NewExpQueue(),
+		data: make(map[string][]byte),
+		ttl:  NewExpQueue(),
 	}
 	heap.Init(storage.ttl)
 	return storage
@@ -36,10 +34,8 @@ func NewStorage() *Storage {
 // It takes the key as string and the value as byte slice.
 // This function locks _datamu mutex for its operations.
 func (s *Storage) Put(key string, value []byte, ttl time.Duration) error {
-	s._datamu.Lock()
-	defer s._datamu.Unlock()
-	s._ttlmu.Lock()
-	defer s._ttlmu.Unlock()
+	s.mu.Lock()
+	defer s.mu.Unlock()
 
 	s.data[key] = value
 
@@ -66,8 +62,8 @@ func (s *Storage) Put(key string, value []byte, ttl time.Duration) error {
 // If the key is not present, error is returned.
 // This function locks _datamu mutex for its operations.
 func (s *Storage) Get(key string) ([]byte, error) {
-	s._datamu.Lock()
-	defer s._datamu.Unlock()
+	s.mu.Lock()
+	defer s.mu.Unlock()
 
 	if v, ok := s.data[key]; ok {
 		return v, nil
@@ -80,8 +76,8 @@ func (s *Storage) Get(key string) ([]byte, error) {
 // It takes the key as string parameter.
 // This function locks _datamu mutex for its operations.
 func (s *Storage) Delete(key string) error {
-	s._datamu.Lock()
-	defer s._datamu.Unlock()
+	s.mu.Lock()
+	defer s.mu.Unlock()
 
 	delete(s.data, key)
 
@@ -92,8 +88,8 @@ func (s *Storage) Delete(key string) error {
 // It takes the key as string parameter.
 // This function locks _datamu mutex for its operations.
 func (s *Storage) Exists(key string) bool {
-	s._datamu.Lock()
-	defer s._datamu.Unlock()
+	s.mu.Lock()
+	defer s.mu.Unlock()
 
 	_, exist := s.data[key]
 	return exist
@@ -102,28 +98,28 @@ func (s *Storage) Exists(key string) bool {
 // CleanUp is a function which removes expired items.
 // It is called periodically by the `CleaningProcess` function.
 func (s *Storage) CleanUp() {
-	s._ttlmu.Lock()
-	defer s._ttlmu.Unlock()
+	s.mu.Lock()
+	defer s.mu.Unlock()
 
 	log.Printf("Storage cleanup started\n")
 
 	now := time.Now()
+	deleted := 0
 
 	for s.ttl.Len() > 0 {
 		item := heap.Pop(s.ttl).(*ItemTTL)
 
 		if item.exp.Before(now) {
 			log.Printf("Item with key \"%s\" expired %f sec ago, deleting\n", item.key, now.Sub(item.exp).Seconds())
-			if err := s.Delete(item.key); err != nil {
-				log.Printf("Failed to delete item with key \"%s\"", item.key)
-			}
+			delete(s.data, item.key)
+			deleted++
 		} else {
 			heap.Push(s.ttl, item)
 			break
 		}
 	}
 
-	log.Printf("Storage cleanup finished\n")
+	log.Printf("Storage cleanup finished. %d keys deleted\n", deleted)
 }
 
 // The `CleaningProcess` function is a goroutine that runs
