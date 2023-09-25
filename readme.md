@@ -13,5 +13,5 @@ docker build -t skhron-image .
 ## Run
 
 ```bash
-docker run -e ADDRESS=:9090 -e PERIOD=5 -p 9090:9090 --name skhron skhron-image
+docker run -p 9090:9090 --rm --name skhron skhron-image skhron -address :9090 -period 5
 ```

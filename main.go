@@ -2,10 +2,10 @@ package main
 
 import (
 	"context"
+	"flag"
 	"log"
 	"os"
 	"os/signal"
-	"strconv"
 	"syscall"
 	"time"
 )
@@ -13,35 +13,20 @@ import (
 func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 
-	var addr string
-	if s, exist := os.LookupEnv("ADDRESS"); exist {
-		addr = s
-	} else {
-		addr = ":3567"
-	}
+	addr := flag.String("address", ":3567", "the address to listen on")
+	period := flag.Int("period", 10, "the period of time to run cleanup (in seconds)")
 
-	var period int
-
-	if s, exist := os.LookupEnv("PERIOD"); exist {
-		var err error
-
-		period, err = strconv.Atoi(s)
-		if err != nil {
-			log.Fatal(err)
-		}
-	} else {
-		period = 10
-	}
+	flag.Parse()
 
 	storage := NewStorage()
-	server := NewServer(addr, storage)
+	server := NewServer(*addr, storage)
 
 	log.Println("Running HTTP server in goroutine")
 	go server.Run(ctx)
 
 	log.Println("Running storage cleaning process in goroutine")
 	done := make(chan struct{})
-	go storage.CleaningProcess(ctx, time.Duration(period)*time.Second, done)
+	go storage.CleaningProcess(ctx, time.Duration(*period)*time.Second, done)
 
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
