@@ -136,13 +136,12 @@ loop:
 	for {
 		select {
 		case <-ctx.Done():
+			log.Println("Shutting down storage cleanup process")
 			break loop
-		default:
+		case <-time.After(period):
 			s.CleanUp()
-			time.Sleep(period)
 		}
 	}
 
-	log.Println("Storage cleanup process finished")
 	done <- struct{}{}
 }

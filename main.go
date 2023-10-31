@@ -38,7 +38,7 @@ func main() {
 	log.Println("Waiting for Ctrl-C to terminate...")
 	<-c
 	log.Println("Closing all processes...")
+	server.Shutdown(ctx)
 	cancel()
 	<-done
-	server.Shutdown(ctx)
 }
