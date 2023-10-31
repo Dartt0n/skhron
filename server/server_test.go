@@ -1,4 +1,4 @@
-package main
+package server
 
 import (
 	"bytes"
@@ -8,6 +8,8 @@ import (
 	"net/http/httptest"
 	"testing"
 	"time"
+
+	"github.com/dartt0n/skhron/storage"
 )
 
 func postRequest(server *Server, path string, data []byte, ttl int) *httptest.ResponseRecorder {
@@ -58,7 +60,7 @@ func assertStatus(t *testing.T, name string, rec *httptest.ResponseRecorder, sta
 
 func TestServerMethodNowAllowed(t *testing.T) {
 	t.Parallel()
-	server := NewServer("", NewStorage())
+	server := New("", storage.New())
 
 	req := httptest.NewRequest(http.MethodHead, "/", nil)
 	rec := httptest.NewRecorder()
@@ -70,7 +72,7 @@ func TestServerMethodNowAllowed(t *testing.T) {
 
 func TestServerGetNotFound(t *testing.T) {
 	t.Parallel()
-	server := NewServer("", NewStorage())
+	server := New("", storage.New())
 
 	rec := getRequest(server, "/test")
 	assertStatus(t, "GET /test", rec, http.StatusNotFound)
@@ -79,7 +81,7 @@ func TestServerGetNotFound(t *testing.T) {
 func TestServerGetPostSuccess(t *testing.T) {
 	t.Parallel()
 	// Dont start clean up process for tests
-	server := NewServer("", NewStorage())
+	server := New("", storage.New())
 	expected := "hello world"
 
 	rec := postRequest(server, "/test", []byte(expected), 0)
@@ -96,7 +98,7 @@ func TestServerGetPostSuccess(t *testing.T) {
 
 func TestServerPostCreated(t *testing.T) {
 	t.Parallel()
-	server := NewServer("", NewStorage())
+	server := New("", storage.New())
 
 	rec := postRequest(server, "/test", []byte("hello world"), 0)
 	assertStatus(t, "POST /test", rec, http.StatusCreated)
@@ -104,7 +106,7 @@ func TestServerPostCreated(t *testing.T) {
 
 func TestServerPostConflict(t *testing.T) {
 	t.Parallel()
-	server := NewServer("", NewStorage())
+	server := New("", storage.New())
 
 	rec := postRequest(server, "/test", []byte("hello world"), 0)
 	assertStatus(t, "POST /test", rec, http.StatusCreated)
@@ -115,7 +117,7 @@ func TestServerPostConflict(t *testing.T) {
 
 func TestServerDelete(t *testing.T) {
 	t.Parallel()
-	server := NewServer("", NewStorage())
+	server := New("", storage.New())
 
 	rec := postRequest(server, "/test", []byte("hello world"), 0)
 	assertStatus(t, "POST /test", rec, http.StatusCreated)
@@ -132,7 +134,7 @@ func TestServerDelete(t *testing.T) {
 
 func TestServerPutUncreated(t *testing.T) {
 	t.Parallel()
-	server := NewServer("", NewStorage())
+	server := New("", storage.New())
 
 	rec := putRequest(server, "/test", []byte("hello world"), 0)
 	assertStatus(t, "PUT /test", rec, http.StatusNotFound)
@@ -140,7 +142,7 @@ func TestServerPutUncreated(t *testing.T) {
 
 func TestServerPutSuccess(t *testing.T) {
 	t.Parallel()
-	server := NewServer("", NewStorage())
+	server := New("", storage.New())
 
 	rec := postRequest(server, "/test", []byte("hello world"), 0)
 	assertStatus(t, "POST /test", rec, http.StatusCreated)
@@ -170,8 +172,8 @@ func TestServerPostTTL(t *testing.T) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 
-	storage := NewStorage()
-	server := NewServer("", storage)
+	storage := storage.New()
+	server := New("", storage)
 
 	done := make(chan struct{})
 	go storage.CleaningProcess(ctx, 500*time.Millisecond, done)
@@ -196,8 +198,8 @@ func TestServerPutTTL(t *testing.T) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 
-	storage := NewStorage()
-	server := NewServer("", storage)
+	storage := storage.New()
+	server := New("", storage)
 
 	done := make(chan struct{})
 	go storage.CleaningProcess(ctx, 500*time.Millisecond, done)

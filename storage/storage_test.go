@@ -1,4 +1,4 @@
-package main
+package storage
 
 import (
 	"context"
@@ -9,7 +9,7 @@ import (
 
 func TestStoragePutGetNew(t *testing.T) {
 	t.Parallel()
-	storage := NewStorage()
+	storage := New()
 
 	var testValue uint32 = 150645
 
@@ -33,7 +33,7 @@ func TestStoragePutGetNew(t *testing.T) {
 
 func TestStoragePutGetOverride(t *testing.T) {
 	t.Parallel()
-	storage := NewStorage()
+	storage := New()
 
 	var testValue uint32 = 12312
 
@@ -62,7 +62,7 @@ func TestStoragePutGetOverride(t *testing.T) {
 
 func TestStorageGetUnknown(t *testing.T) {
 	t.Parallel()
-	s := NewStorage()
+	s := New()
 
 	value, err := s.Get("test-get-unknown")
 	if err == nil {
@@ -72,7 +72,7 @@ func TestStorageGetUnknown(t *testing.T) {
 
 func TestStorageDeleteExisting(t *testing.T) {
 	t.Parallel()
-	storage := NewStorage()
+	storage := New()
 
 	var testValue uint32 = 150645
 
@@ -96,7 +96,7 @@ func TestStorageDeleteExisting(t *testing.T) {
 
 func TestStorageDeleteNonExisting(t *testing.T) {
 	t.Parallel()
-	s := NewStorage()
+	s := New()
 
 	err := s.Delete("test-delete-nonexisting")
 	if err != nil {
@@ -106,7 +106,7 @@ func TestStorageDeleteNonExisting(t *testing.T) {
 
 func TestStorageExistExisting(t *testing.T) {
 	t.Parallel()
-	storage := NewStorage()
+	storage := New()
 
 	var testValue uint32 = 231
 
@@ -125,7 +125,7 @@ func TestStorageExistExisting(t *testing.T) {
 
 func TestStorageExistNonExisting(t *testing.T) {
 	t.Parallel()
-	s := NewStorage()
+	s := New()
 
 	value := s.Exists("test-exist-non-existing")
 	if value != false {
@@ -139,7 +139,7 @@ func TestStorageCleanup(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan struct{})
 
-	storage := NewStorage()
+	storage := New()
 	go storage.CleaningProcess(ctx, 500*time.Millisecond, done)
 
 	if err := storage.Put("test", []byte("hello world"), 500*time.Millisecond); err != nil {

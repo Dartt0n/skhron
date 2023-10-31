@@ -8,6 +8,9 @@ import (
 	"os/signal"
 	"syscall"
 	"time"
+
+	"github.com/dartt0n/skhron/server"
+	"github.com/dartt0n/skhron/storage"
 )
 
 func main() {
@@ -18,8 +21,8 @@ func main() {
 
 	flag.Parse()
 
-	storage := NewStorage()
-	server := NewServer(*addr, storage)
+	storage := storage.New()
+	server := server.New(*addr, storage)
 
 	log.Println("Running HTTP server in goroutine")
 	go server.Run(ctx)

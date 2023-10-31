@@ -1,4 +1,4 @@
-package main
+package storage
 
 import (
 	"container/heap"
@@ -19,9 +19,9 @@ type Storage struct {
 	ttl  *ExpQueue
 }
 
-// NewStorage function returns a new instance of the Storage struct
+// New function returns a new instance of the Storage struct
 // with an initialized data map and a mutex.
-func NewStorage() *Storage {
+func New() *Storage {
 	storage := &Storage{
 		mu: sync.RWMutex{},
 

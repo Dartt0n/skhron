@@ -1,4 +1,4 @@
-package main
+package server
 
 import (
 	"context"
@@ -8,17 +8,19 @@ import (
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/dartt0n/skhron/storage"
 )
 
 type Server struct {
-	strg *Storage
+	strg *storage.Storage
 	addr string
 	serv *http.Server
 }
 
-// NewServer function creates a new server instance with a
+// New function creates a new server instance with a
 // specified address and initializes a new in-memory storage.
-func NewServer(addr string, storage *Storage) *Server {
+func New(addr string, storage *storage.Storage) *Server {
 	return &Server{
 		strg: storage,
 		addr: addr,
