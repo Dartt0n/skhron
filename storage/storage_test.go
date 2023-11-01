@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-func TestStoragePutGetNew(t *testing.T) {
+func TestStorage_PutGetNew(t *testing.T) {
 	t.Parallel()
 	storage := New()
 
@@ -31,7 +31,7 @@ func TestStoragePutGetNew(t *testing.T) {
 	}
 }
 
-func TestStoragePutGetOverride(t *testing.T) {
+func TestStorage_PutGetOverride(t *testing.T) {
 	t.Parallel()
 	storage := New()
 
@@ -60,7 +60,7 @@ func TestStoragePutGetOverride(t *testing.T) {
 	}
 }
 
-func TestStorageGetUnknown(t *testing.T) {
+func TestStorage_GetUnknown(t *testing.T) {
 	t.Parallel()
 	s := New()
 
@@ -70,7 +70,7 @@ func TestStorageGetUnknown(t *testing.T) {
 	}
 }
 
-func TestStorageDeleteExisting(t *testing.T) {
+func TestStorage_DeleteExisting(t *testing.T) {
 	t.Parallel()
 	storage := New()
 
@@ -94,7 +94,7 @@ func TestStorageDeleteExisting(t *testing.T) {
 	}
 }
 
-func TestStorageDeleteNonExisting(t *testing.T) {
+func TestStorage_DeleteNonExisting(t *testing.T) {
 	t.Parallel()
 	s := New()
 
@@ -104,7 +104,7 @@ func TestStorageDeleteNonExisting(t *testing.T) {
 	}
 }
 
-func TestStorageExistExisting(t *testing.T) {
+func TestStorage_ExistExisting(t *testing.T) {
 	t.Parallel()
 	storage := New()
 
@@ -123,7 +123,7 @@ func TestStorageExistExisting(t *testing.T) {
 	}
 }
 
-func TestStorageExistNonExisting(t *testing.T) {
+func TestStorage_ExistNonExisting(t *testing.T) {
 	t.Parallel()
 	s := New()
 
@@ -133,7 +133,7 @@ func TestStorageExistNonExisting(t *testing.T) {
 	}
 }
 
-func TestStorageCleanup(t *testing.T) {
+func TestStorage_Cleanup(t *testing.T) {
 	t.Parallel()
 
 	ctx, cancel := context.WithCancel(context.Background())
