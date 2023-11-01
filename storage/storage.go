@@ -15,8 +15,8 @@ import (
 type Storage struct {
 	mu sync.RWMutex
 
-	data *smap.Map[string, []byte]
-	ttl  *ExpQueue
+	Data *smap.Map[string, []byte]
+	TTLq *ExpQueue
 }
 
 // New function returns a new instance of the Storage struct
@@ -25,10 +25,10 @@ func New() *Storage {
 	storage := &Storage{
 		mu: sync.RWMutex{},
 
-		data: smap.New[string, []byte](10000), // shrink map after every 10k deletions
-		ttl:  NewExpQueue(),
+		Data: smap.New[string, []byte](10000), // shrink map after every 10k deletions
+		TTLq: NewExpQueue(),
 	}
-	heap.Init(storage.ttl)
+	heap.Init(storage.TTLq)
 	return storage
 }
 
@@ -39,21 +39,21 @@ func (s *Storage) Put(key string, value []byte, ttl time.Duration) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	s.data.Set(key, value)
+	s.Data.Set(key, value)
 
 	// Find previous item
 	index := -1
-	for i := 0; i < s.ttl.Len(); i++ {
-		if (*s.ttl)[i].key == key {
+	for i := 0; i < s.TTLq.Len(); i++ {
+		if (*s.TTLq)[i].key == key {
 			index = i
-			(*s.ttl)[index].exp = time.Now().Add(ttl)
+			(*s.TTLq)[index].exp = time.Now().Add(ttl)
 		}
 	}
 
 	if index == -1 {
-		heap.Push(s.ttl, &ItemTTL{key: key, exp: time.Now().Add(ttl)})
+		heap.Push(s.TTLq, &ItemTTL{key: key, exp: time.Now().Add(ttl)})
 	} else {
-		heap.Fix(s.ttl, index)
+		heap.Fix(s.TTLq, index)
 	}
 
 	return nil
@@ -67,7 +67,7 @@ func (s *Storage) Get(key string) ([]byte, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	if v, ok := s.data.Get2(key); ok {
+	if v, ok := s.Data.Get2(key); ok {
 		return v, nil
 	}
 
@@ -81,7 +81,7 @@ func (s *Storage) Delete(key string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	s.data.Delete(key)
+	s.Data.Delete(key)
 
 	return nil
 }
@@ -93,7 +93,7 @@ func (s *Storage) Exists(key string) bool {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	_, exist := s.data.Get2(key)
+	_, exist := s.Data.Get2(key)
 	return exist
 }
 
@@ -108,20 +108,20 @@ func (s *Storage) CleanUp() {
 	now := time.Now()
 	deleted := 0
 
-	for s.ttl.Len() > 0 {
-		item := heap.Pop(s.ttl).(*ItemTTL)
+	for s.TTLq.Len() > 0 {
+		item := heap.Pop(s.TTLq).(*ItemTTL)
 
 		if item.exp.Before(now) {
 			log.Printf("Item with key \"%s\" expired %f sec ago, deleting\n", item.key, now.Sub(item.exp).Seconds())
-			s.data.Delete(item.key)
+			s.Data.Delete(item.key)
 			deleted++
 		} else {
-			heap.Push(s.ttl, item)
+			heap.Push(s.TTLq, item)
 			break
 		}
 	}
 
-	log.Printf("Storage cleanup finished. %d keys deleted, %d left in queue\n", deleted, s.ttl.Len())
+	log.Printf("Storage cleanup finished. %d keys deleted, %d left in queue\n", deleted, s.TTLq.Len())
 }
 
 // The `CleaningProcess` function is a goroutine that runs
@@ -136,6 +136,7 @@ loop:
 	for {
 		select {
 		case <-ctx.Done():
+			s.CleanUp()
 			log.Println("Shutting down storage cleanup process")
 			break loop
 		case <-time.After(period):
