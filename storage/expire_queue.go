@@ -3,8 +3,8 @@ package storage
 import "time"
 
 type ItemTTL struct {
-	key string
-	exp time.Time
+	Key string    `json:"key,omitempty"`
+	Exp time.Time `json:"exp,omitempty"`
 }
 
 type ExpireQueue []*ItemTTL
@@ -16,7 +16,7 @@ func NewExpQueue() *ExpireQueue {
 
 // heap.Interface
 func (q ExpireQueue) Len() int           { return len(q) }
-func (q ExpireQueue) Less(i, j int) bool { return q[i].exp.Before(q[j].exp) }
+func (q ExpireQueue) Less(i, j int) bool { return q[i].Exp.Before(q[j].Exp) }
 func (q ExpireQueue) Swap(i, j int)      { q[i], q[j] = q[j], q[i] }
 
 func (q *ExpireQueue) Push(x any) {

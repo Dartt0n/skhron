@@ -3,7 +3,10 @@ package storage
 import (
 	"container/heap"
 	"context"
+	"encoding/json"
 	"log"
+	"os"
+	"path"
 	"sync"
 	"time"
 
@@ -15,8 +18,8 @@ import (
 type Storage struct {
 	mu sync.RWMutex
 
-	Data *smap.Map[string, []byte]
-	TTLq *ExpireQueue
+	Data *smap.Map[string, []byte] `json:"data,omitempty"`
+	TTLq *ExpireQueue              `json:"ttlq,omitempty"`
 }
 
 // New function returns a new instance of the Storage struct
@@ -44,14 +47,14 @@ func (s *Storage) Put(key string, value []byte, ttl time.Duration) error {
 	// Find previous item
 	index := -1
 	for i := 0; i < s.TTLq.Len(); i++ {
-		if (*s.TTLq)[i].key == key {
+		if (*s.TTLq)[i].Key == key {
 			index = i
-			(*s.TTLq)[index].exp = time.Now().Add(ttl)
+			(*s.TTLq)[index].Exp = time.Now().Add(ttl)
 		}
 	}
 
 	if index == -1 {
-		heap.Push(s.TTLq, &ItemTTL{key: key, exp: time.Now().Add(ttl)})
+		heap.Push(s.TTLq, &ItemTTL{Key: key, Exp: time.Now().Add(ttl)})
 	} else {
 		heap.Fix(s.TTLq, index)
 	}
@@ -111,9 +114,9 @@ func (s *Storage) CleanUp() {
 	for s.TTLq.Len() > 0 {
 		item := heap.Pop(s.TTLq).(*ItemTTL)
 
-		if item.exp.Before(now) {
-			log.Printf("Item with key \"%s\" expired %f sec ago, deleting\n", item.key, now.Sub(item.exp).Seconds())
-			s.Data.Delete(item.key)
+		if item.Exp.Before(now) {
+			log.Printf("Item with key \"%s\" expired %f sec ago, deleting\n", item.Key, now.Sub(item.Exp).Seconds())
+			s.Data.Delete(item.Key)
 			deleted++
 		} else {
 			heap.Push(s.TTLq, item)
@@ -137,6 +140,12 @@ loop:
 		select {
 		case <-ctx.Done():
 			s.CleanUp()
+
+			// todo: logging
+			if err := s.FileBackup(time.Now().Format("skhron_2006_01_02_15:04:05.json")); err != nil {
+				log.Printf("Failed to backup file: %v\n", err)
+			}
+
 			log.Println("Shutting down storage cleanup process")
 			break loop
 		case <-time.After(period):
@@ -145,4 +154,68 @@ loop:
 	}
 
 	done <- struct{}{}
+}
+
+func (s *Storage) FileBackup(file string) error { // todo: better method names
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	bytes, err := json.Marshal(map[string]interface{}{
+		"data": s.Data.Values(),
+		"ttlq": s.TTLq,
+	})
+
+	if err != nil {
+		return err
+	}
+
+	if dir, err := os.Stat(".skhron"); os.IsNotExist(err) {
+		err = os.Mkdir(".skhron", 0777)
+		if err != nil {
+			return err
+		}
+	} else if !dir.IsDir() {
+		return errors.New(".skhron file is not a directory")
+	}
+
+	f, err := os.Create(path.Join(".skhron", file))
+	if err != nil {
+		return err
+	}
+
+	_, err = f.Write(bytes)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s *Storage) FileLoad(path string) error {
+	// TODO: find last file
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	f, err := os.Open(path)
+	if err != nil {
+		return err
+	}
+
+	rs := &struct {
+		Data map[string][]byte
+		TTLq *ExpireQueue
+	}{}
+
+	dec := json.NewDecoder(f)
+	if err := dec.Decode(rs); err != nil {
+		return err
+	}
+
+	for rs.TTLq.Len() > 0 {
+		item := rs.TTLq.Pop().(*ItemTTL)
+		s.Data.Set(item.Key, rs.Data[item.Key])
+		s.TTLq.Push(item)
+	}
+
+	return nil
 }
