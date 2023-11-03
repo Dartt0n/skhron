@@ -16,7 +16,7 @@ type Storage struct {
 	mu sync.RWMutex
 
 	Data *smap.Map[string, []byte]
-	TTLq *ExpQueue
+	TTLq *ExpireQueue
 }
 
 // New function returns a new instance of the Storage struct

@@ -28,8 +28,8 @@ func main() {
 	go server.Run(ctx)
 
 	log.Println("Running storage cleaning process in goroutine")
-	done := make(chan struct{})
-	go storage.CleaningProcess(ctx, time.Duration(*period)*time.Second, done)
+	storage_shutdown := make(chan struct{})
+	go storage.CleaningProcess(ctx, time.Duration(*period)*time.Second, storage_shutdown)
 
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
@@ -37,8 +37,9 @@ func main() {
 
 	log.Println("Waiting for Ctrl-C to terminate...")
 	<-c
+	cancel()
+
 	log.Println("Closing all processes...")
 	server.Shutdown(ctx)
-	cancel()
-	<-done
+	<-storage_shutdown
 }
