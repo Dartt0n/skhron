@@ -176,7 +176,7 @@ func TestServerPostTTL(t *testing.T) {
 	server := New("", storage)
 
 	done := make(chan struct{})
-	go storage.CleaningProcess(ctx, 500*time.Millisecond, done)
+	go storage.PeriodicCleanup(ctx, 500*time.Millisecond, done)
 
 	rec := postRequest(server, "/test", []byte("test"), 1)
 	assertStatus(t, "POST /test", rec, http.StatusCreated)
@@ -202,7 +202,7 @@ func TestServerPutTTL(t *testing.T) {
 	server := New("", storage)
 
 	done := make(chan struct{})
-	go storage.CleaningProcess(ctx, 500*time.Millisecond, done)
+	go storage.PeriodicCleanup(ctx, 500*time.Millisecond, done)
 
 	rec := postRequest(server, "/test", []byte("test"), 10000)
 	assertStatus(t, "POST /test", rec, http.StatusCreated)

@@ -140,7 +140,7 @@ func TestStorage_Cleanup(t *testing.T) {
 	done := make(chan struct{})
 
 	storage := New()
-	go storage.CleaningProcess(ctx, 500*time.Millisecond, done)
+	go storage.PeriodicCleanup(ctx, 500*time.Millisecond, done)
 
 	if err := storage.Put("test", []byte("hello world"), 500*time.Millisecond); err != nil {
 		t.Errorf("put failed: %v", err)

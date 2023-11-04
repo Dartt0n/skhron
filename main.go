@@ -29,7 +29,7 @@ func main() {
 
 	log.Println("Running storage cleaning process in goroutine")
 	storage_shutdown := make(chan struct{})
-	go storage.CleaningProcess(ctx, time.Duration(*period)*time.Second, storage_shutdown)
+	go storage.PeriodicCleanup(ctx, time.Duration(*period)*time.Second, storage_shutdown)
 
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)

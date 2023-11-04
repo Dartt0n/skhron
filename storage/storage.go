@@ -22,8 +22,7 @@ type Storage struct {
 	TTLq *ExpireQueue              `json:"ttlq,omitempty"`
 }
 
-// New function returns a new instance of the Storage struct
-// with an initialized data map and a mutex.
+// New function returns a new instance of the Storage struct.
 func New() *Storage {
 	storage := &Storage{
 		mu: sync.RWMutex{},
@@ -35,9 +34,9 @@ func New() *Storage {
 	return storage
 }
 
-// Put is a function which puts a value in the data map under a key.
+// Put is a function which puts a value in the storage under a key.
 // It takes the key as string and the value as byte slice.
-// This function locks write & read mutex for its operations.
+// This function locks mutex for its operations.
 func (s *Storage) Put(key string, value []byte, ttl time.Duration) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -62,10 +61,10 @@ func (s *Storage) Put(key string, value []byte, ttl time.Duration) error {
 	return nil
 }
 
-// Get is a function which fetches a value in the data map under a key.
+// Get is a function which fetches a value in the storage under a key.
 // It takes the key as string parameter.
 // If the key is not present, error is returned.
-// This function locks read mutex for its operations.
+// This function locks mutex for its operations.
 func (s *Storage) Get(key string) ([]byte, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
@@ -77,9 +76,9 @@ func (s *Storage) Get(key string) ([]byte, error) {
 	return []byte{}, errors.New("no such key: " + key)
 }
 
-// Delete is a function which deletes a key from the data map.
+// Delete is a function which deletes a key from the storage.
 // It takes the key as string parameter.
-// This function locks read & write mutex for its operations.
+// This function locks mutex for its operations.
 func (s *Storage) Delete(key string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -89,9 +88,9 @@ func (s *Storage) Delete(key string) error {
 	return nil
 }
 
-// Exists is a function which check wheater a key is present in the data map.
+// Exists is a function which check wheater a key is present in the storage.
 // It takes the key as string parameter.
-// This function locks read mutex for its operations.
+// This function locks mutex for its operations.
 func (s *Storage) Exists(key string) bool {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
@@ -101,7 +100,8 @@ func (s *Storage) Exists(key string) bool {
 }
 
 // CleanUp is a function which removes expired items.
-// It is called periodically by the `CleaningProcess` function.
+// It is called periodically by the `PeriodicCleanup` function.
+// This function locks mutex for its operations.
 func (s *Storage) CleanUp() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -127,13 +127,13 @@ func (s *Storage) CleanUp() {
 	log.Printf("Storage cleanup finished. %d keys deleted, %d left in queue\n", deleted, s.TTLq.Len())
 }
 
-// The `CleaningProcess` function is a goroutine that runs
-// in the background and periodically calls the
-// `CleanUp` function of the `Storage` struct.
-// It works until ctx.Done() is called.
-// It puts into done channel when it finishes.
+// `PeriodicCleanup` is a function that
+// periodically calls the `CleanUp` function.
+// It works until `ctx.Done()` signal is sent.
+// It puts into `done` channel when it finishes.
+// It backups current state of the storage into file `./skhron/skhron_{timestamp}.json` on exit.
 // It runs clean up process every `period` time duration.
-func (s *Storage) CleaningProcess(ctx context.Context, period time.Duration, done chan struct{}) {
+func (s *Storage) PeriodicCleanup(ctx context.Context, period time.Duration, done chan struct{}) {
 	log.Printf("Starting cleaning up process with period %.02f sec\n", period.Seconds())
 loop:
 	for {
