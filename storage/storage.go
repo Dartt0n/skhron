@@ -15,11 +15,6 @@ import (
 	smap "github.com/go-auxiliaries/shrinking-map/pkg/shrinking-map"
 )
 
-var (
-	SkhronExtension     = ".skh"
-	SkronTmpSnapshotDir = "/tmp/skhron"
-)
-
 type Storage struct {
 	mu sync.RWMutex
 
@@ -27,13 +22,13 @@ type Storage struct {
 	TTLq *ExpireQueue              `json:"ttlq,omitempty"`
 
 	// Config
-	SnapshotDir    string
-	SnapshotName   string
-	TmpSnapshotDir string
+	SnapshotDir     string
+	SnapshotName    string
+	TempSnapshotDir string
 }
 
 // New function returns a new instance of the Storage struct.
-func New() *Storage {
+func New(opts ...StorageOpt) *Storage {
 	storage := &Storage{
 		mu: sync.RWMutex{},
 
@@ -43,14 +38,11 @@ func New() *Storage {
 	heap.Init(storage.TTLq)
 
 	DefaultOpts(storage)
+	for _, opt := range opts {
+		opt(storage)
+	}
 
 	return storage
-}
-
-func DefaultOpts(s *Storage) {
-	s.SnapshotDir = ".skhron"
-	s.SnapshotName = "snapshot"
-	s.TmpSnapshotDir = SkronTmpSnapshotDir
 }
 
 // Put is a function which puts a value in the storage under a key.
@@ -198,7 +190,7 @@ func (s *Storage) CreateSnapshot() error {
 	}
 
 	// create temp directory recursively, does not fail if directory already exists
-	err = os.MkdirAll(s.TmpSnapshotDir, os.ModePerm)
+	err = os.MkdirAll(s.TempSnapshotDir, os.ModePerm)
 	if err != nil {
 		return err
 	}
@@ -207,7 +199,7 @@ func (s *Storage) CreateSnapshot() error {
 
 	// create temp file
 	tmpName := "skhron" + timestamp + ".json"
-	tmpFilepath := path.Join(s.TmpSnapshotDir, tmpName)
+	tmpFilepath := path.Join(s.TempSnapshotDir, tmpName)
 
 	f, err := os.Create(tmpFilepath)
 	if err != nil {
