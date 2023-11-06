@@ -22,6 +22,8 @@ func main() {
 	flag.Parse()
 
 	storage := storage.New()
+	storage.LoadSnapshot()
+
 	server := server.New(*addr, storage)
 
 	log.Println("Running HTTP server in goroutine")

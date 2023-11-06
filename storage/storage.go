@@ -15,11 +15,21 @@ import (
 	smap "github.com/go-auxiliaries/shrinking-map/pkg/shrinking-map"
 )
 
+var (
+	SkhronExtension     = ".skh"
+	SkronTmpSnapshotDir = "/tmp/skhron"
+)
+
 type Storage struct {
 	mu sync.RWMutex
 
 	Data *smap.Map[string, []byte] `json:"data,omitempty"`
 	TTLq *ExpireQueue              `json:"ttlq,omitempty"`
+
+	// Config
+	SnapshotDir    string
+	SnapshotName   string
+	TmpSnapshotDir string
 }
 
 // New function returns a new instance of the Storage struct.
@@ -31,7 +41,16 @@ func New() *Storage {
 		TTLq: NewExpQueue(),
 	}
 	heap.Init(storage.TTLq)
+
+	DefaultOpts(storage)
+
 	return storage
+}
+
+func DefaultOpts(s *Storage) {
+	s.SnapshotDir = ".skhron"
+	s.SnapshotName = "snapshot"
+	s.TmpSnapshotDir = SkronTmpSnapshotDir
 }
 
 // Put is a function which puts a value in the storage under a key.
@@ -141,9 +160,8 @@ loop:
 		case <-ctx.Done():
 			s.CleanUp()
 
-			// todo: logging
-			if err := s.FileBackup(time.Now().Format("skhron_2006_01_02_15:04:05.json")); err != nil {
-				log.Printf("Failed to backup file: %v\n", err)
+			if err := s.CreateSnapshot(); err != nil {
+				log.Printf("failed to create snapshot file: %v\n", err)
 			}
 
 			log.Println("Shutting down storage cleanup process")
@@ -156,7 +174,7 @@ loop:
 	done <- struct{}{}
 }
 
-func (s *Storage) FileBackup(file string) error { // todo: better method names
+func (s *Storage) JsonMarshal() ([]byte, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -166,24 +184,62 @@ func (s *Storage) FileBackup(file string) error { // todo: better method names
 	})
 
 	if err != nil {
-		return err
+		return []byte{}, err
 	}
 
-	if dir, err := os.Stat(".skhron"); os.IsNotExist(err) {
-		err = os.Mkdir(".skhron", 0777)
-		if err != nil {
-			return err
-		}
-	} else if !dir.IsDir() {
-		return errors.New(".skhron file is not a directory")
-	}
+	return bytes, nil
+}
 
-	f, err := os.Create(path.Join(".skhron", file))
+func (s *Storage) CreateSnapshot() error {
+	// Marshal stroge to json
+	bytes, err := s.JsonMarshal()
 	if err != nil {
 		return err
 	}
 
+	// create temp directory recursively, does not fail if directory already exists
+	err = os.MkdirAll(s.TmpSnapshotDir, os.ModePerm)
+	if err != nil {
+		return err
+	}
+
+	timestamp := time.Now().Format("_2006_01_02_15:04:05")
+
+	// create temp file
+	tmpName := "skhron" + timestamp + ".json"
+	tmpFilepath := path.Join(s.TmpSnapshotDir, tmpName)
+
+	f, err := os.Create(tmpFilepath)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	// write json
 	_, err = f.Write(bytes)
+	if err != nil {
+		return err
+	}
+
+	// create directory for snapshot file
+	err = os.MkdirAll(s.SnapshotDir, os.ModePerm)
+	if err != nil {
+		return err
+	}
+
+	filepath := path.Join(s.SnapshotDir, s.SnapshotName+SkhronExtension)
+
+	// if previos snapshot exists, rename it
+	_, err = os.Stat(filepath)
+	if err == nil {
+		newPath := path.Join(s.SnapshotDir, s.SnapshotName+timestamp+SkhronExtension)
+		if err := os.Rename(filepath, newPath); err != nil {
+			log.Printf("failed to move old snapshot (%s) to %s\n", filepath, newPath)
+		}
+	}
+
+	// move tmp file into new location
+	err = os.Rename(tmpFilepath, filepath)
 	if err != nil {
 		return err
 	}
@@ -191,10 +247,11 @@ func (s *Storage) FileBackup(file string) error { // todo: better method names
 	return nil
 }
 
-func (s *Storage) FileLoad(path string) error {
-	// TODO: find last file
+func (s *Storage) LoadSnapshot() error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+
+	path := path.Join(s.SnapshotDir, s.SnapshotName+SkhronExtension)
 
 	f, err := os.Open(path)
 	if err != nil {
