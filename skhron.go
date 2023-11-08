@@ -246,7 +246,7 @@ func (s *Skhron) CreateSnapshot() error {
 
 	filepath := path.Join(s.SnapshotDir, s.SnapshotName+SkhronExtension)
 
-	// if previos snapshot exists, rename it
+	// if previous snapshot exists, rename it
 	_, err = os.Stat(filepath)
 	if err == nil {
 		newPath := path.Join(s.SnapshotDir, s.SnapshotName+timestamp+SkhronExtension)
