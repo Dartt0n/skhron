@@ -10,6 +10,8 @@ func DefaultOpts(s *Skhron) {
 	s.SnapshotDir = ".skhron"
 	s.SnapshotName = "snapshot"
 	s.TempSnapshotDir = "/tmp/skhron"
+
+	s.Data.SetLimit(10000) // shrink map after every 10k deletions
 }
 
 func WithSnapshotDir(dir string) StorageOpt {

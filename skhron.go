@@ -16,30 +16,41 @@ import (
 )
 
 type Skhron struct {
-	mu sync.RWMutex
+	mu sync.RWMutex // skhron data map mutex
 
+	// Skhron.Data is a main object. All the data is stored here.
+	// It is shrinking map, which shrinks every "limit" (skhron.WithMapLimit option) deletions.
 	Data *smap.Map[string, []byte] `json:"data,omitempty"`
-	TTLq *expireQueue              `json:"ttlq,omitempty"`
+	// Skhron.TTLq is a queue object used to delete expired items in time.
+	// Each put operation the object is either added to the queue or updated in the queue.
+	// The cleaning up process takes an item from the front of the queue and checks,
+	// Whether the item has expired or not. Thus, we avoid scanning the whole map to find expired items.
+	TTLq *expireQueue `json:"ttlq,omitempty"`
 
 	// Config
-	SnapshotDir     string
-	SnapshotName    string
+
+	// A directory where snapshots would be stored
+	SnapshotDir string
+	// A name (WITHOUT EXTENSION) which would be used to store the latest snapshot
+	SnapshotName string
+	// A directory where temporary files would be stored
 	TempSnapshotDir string
 }
 
-// New function returns a new instance of the Skhron struct.
+// Initialize Skhron instance with options.
 func New(opts ...StorageOpt) *Skhron {
 	skhron := &Skhron{
 		mu: sync.RWMutex{},
 
-		Data: smap.New[string, []byte](10000), // shrink map after every 10k deletions
+		Data: smap.New[string, []byte](0),
 		TTLq: newExpQueue(),
 	}
-	heap.Init(skhron.TTLq)
 
-	DefaultOpts(skhron)
-	for _, opt := range opts {
-		opt(skhron)
+	heap.Init(skhron.TTLq) // initialize queue
+
+	DefaultOpts(skhron)        // default options
+	for _, opt := range opts { // iterate over provided options
+		opt(skhron) // apply provided option
 	}
 
 	return skhron
@@ -47,6 +58,9 @@ func New(opts ...StorageOpt) *Skhron {
 
 // Put is a function which puts a value in the storage under a key.
 // It takes the key as string and the value as byte slice.
+// It scans the entire queue to find if the item is already in the queue.
+// If it is, it updates the item and updates the queue (to maintain priority).
+// If it is not, it puts the item into the queue.
 // This function locks mutex for its operations.
 func (s *Skhron) Put(key string, value []byte, ttl time.Duration) error {
 	s.mu.Lock()
@@ -56,17 +70,17 @@ func (s *Skhron) Put(key string, value []byte, ttl time.Duration) error {
 
 	// Find previous item
 	index := -1
-	for i := 0; i < s.TTLq.Len(); i++ {
+	for i := 0; i < s.TTLq.Len(); i++ { // iterate over the entire queue
 		if (*s.TTLq)[i].Key == key {
 			index = i
-			(*s.TTLq)[index].Exp = time.Now().Add(ttl)
+			(*s.TTLq)[index].Exp = time.Now().Add(ttl) // update item ttl
 		}
 	}
 
 	if index == -1 {
 		heap.Push(s.TTLq, &expireItem{Key: key, Exp: time.Now().Add(ttl)})
 	} else {
-		heap.Fix(s.TTLq, index)
+		heap.Fix(s.TTLq, index) // update queue
 	}
 
 	return nil
@@ -89,12 +103,18 @@ func (s *Skhron) Get(key string) ([]byte, error) {
 
 // Delete is a function which deletes a key from the storage.
 // It takes the key as string parameter.
+// It does not delete the key from the queue, since when the key is expired
+// it would be deleted from the queue without side effects.
 // This function locks mutex for its operations.
 func (s *Skhron) Delete(key string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	s.Data.Delete(key)
+
+	// todo: delete from queue?
+	// benefit: lower memory usage
+	// drawback: higher execution time
 
 	return nil
 }
@@ -103,8 +123,8 @@ func (s *Skhron) Delete(key string) error {
 // It takes the key as string parameter.
 // This function locks mutex for its operations.
 func (s *Skhron) Exists(key string) bool {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
+	s.mu.Lock()
+	defer s.mu.Unlock()
 
 	_, exist := s.Data.Get2(key)
 	return exist
@@ -166,6 +186,7 @@ loop:
 	done <- struct{}{}
 }
 
+// JsonMarchal is a function, which converts the struct into JSON-string bytes
 func (s *Skhron) JsonMarshal() ([]byte, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -182,6 +203,10 @@ func (s *Skhron) JsonMarshal() ([]byte, error) {
 	return bytes, nil
 }
 
+// CreateSnapshot is a function which create snapshot (json dump of struct)
+// in the temporary directory.
+// Then it checks if an older snapshot exists in snapshot directory.
+// If it is, it renames it to format "{snapshot name}_{time stamp}.skh"
 func (s *Skhron) CreateSnapshot() error {
 	// Marshal stroge to json
 	bytes, err := s.JsonMarshal()
@@ -239,6 +264,10 @@ func (s *Skhron) CreateSnapshot() error {
 	return nil
 }
 
+// LoadSnapshot is a function, which loads data
+// from the latest snapshot file and writes data to the Skhron object.
+// It looks for file {snapshot dir}/{snapshot file}.skh
+// If load is failed, error is returned.
 func (s *Skhron) LoadSnapshot() error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -259,6 +288,12 @@ func (s *Skhron) LoadSnapshot() error {
 	if err := dec.Decode(rs); err != nil {
 		return err
 	}
+
+	// reset old skhron data
+	limit := s.Data.GetLimit()
+	s.Data = smap.New[string, []byte](limit)
+	s.TTLq = newExpQueue()
+	heap.Init(s.TTLq)
 
 	for rs.TTLq.Len() > 0 {
 		item := rs.TTLq.Pop().(*expireItem)
