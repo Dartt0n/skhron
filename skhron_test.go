@@ -1,4 +1,4 @@
-package storage
+package skhron
 
 import (
 	"context"

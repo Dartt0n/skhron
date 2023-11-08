@@ -3,15 +3,3 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/dartt0n/skhron)](https://goreportcard.com/report/github.com/dartt0n/skhron)
 
 Skhron is a simple in-memory storage with active cleaning and rest http api
-
-## Build
-
-```bash
-docker build -t skhron-image .
-```
-
-## Run
-
-```bash
-docker run -p 9090:9090 --rm --name skhron skhron-image skhron -address :9090 -period 5
-```

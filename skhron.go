@@ -1,4 +1,4 @@
-package storage
+package skhron
 
 import (
 	"container/heap"
@@ -15,11 +15,11 @@ import (
 	smap "github.com/go-auxiliaries/shrinking-map/pkg/shrinking-map"
 )
 
-type Storage struct {
+type Skhron struct {
 	mu sync.RWMutex
 
 	Data *smap.Map[string, []byte] `json:"data,omitempty"`
-	TTLq *ExpireQueue              `json:"ttlq,omitempty"`
+	TTLq *expireQueue              `json:"ttlq,omitempty"`
 
 	// Config
 	SnapshotDir     string
@@ -27,28 +27,28 @@ type Storage struct {
 	TempSnapshotDir string
 }
 
-// New function returns a new instance of the Storage struct.
-func New(opts ...StorageOpt) *Storage {
-	storage := &Storage{
+// New function returns a new instance of the Skhron struct.
+func New(opts ...StorageOpt) *Skhron {
+	skhron := &Skhron{
 		mu: sync.RWMutex{},
 
 		Data: smap.New[string, []byte](10000), // shrink map after every 10k deletions
-		TTLq: NewExpQueue(),
+		TTLq: newExpQueue(),
 	}
-	heap.Init(storage.TTLq)
+	heap.Init(skhron.TTLq)
 
-	DefaultOpts(storage)
+	DefaultOpts(skhron)
 	for _, opt := range opts {
-		opt(storage)
+		opt(skhron)
 	}
 
-	return storage
+	return skhron
 }
 
 // Put is a function which puts a value in the storage under a key.
 // It takes the key as string and the value as byte slice.
 // This function locks mutex for its operations.
-func (s *Storage) Put(key string, value []byte, ttl time.Duration) error {
+func (s *Skhron) Put(key string, value []byte, ttl time.Duration) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -64,7 +64,7 @@ func (s *Storage) Put(key string, value []byte, ttl time.Duration) error {
 	}
 
 	if index == -1 {
-		heap.Push(s.TTLq, &ItemTTL{Key: key, Exp: time.Now().Add(ttl)})
+		heap.Push(s.TTLq, &expireItem{Key: key, Exp: time.Now().Add(ttl)})
 	} else {
 		heap.Fix(s.TTLq, index)
 	}
@@ -76,7 +76,7 @@ func (s *Storage) Put(key string, value []byte, ttl time.Duration) error {
 // It takes the key as string parameter.
 // If the key is not present, error is returned.
 // This function locks mutex for its operations.
-func (s *Storage) Get(key string) ([]byte, error) {
+func (s *Skhron) Get(key string) ([]byte, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
@@ -90,7 +90,7 @@ func (s *Storage) Get(key string) ([]byte, error) {
 // Delete is a function which deletes a key from the storage.
 // It takes the key as string parameter.
 // This function locks mutex for its operations.
-func (s *Storage) Delete(key string) error {
+func (s *Skhron) Delete(key string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -102,7 +102,7 @@ func (s *Storage) Delete(key string) error {
 // Exists is a function which check wheater a key is present in the storage.
 // It takes the key as string parameter.
 // This function locks mutex for its operations.
-func (s *Storage) Exists(key string) bool {
+func (s *Skhron) Exists(key string) bool {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
@@ -113,17 +113,17 @@ func (s *Storage) Exists(key string) bool {
 // CleanUp is a function which removes expired items.
 // It is called periodically by the `PeriodicCleanup` function.
 // This function locks mutex for its operations.
-func (s *Storage) CleanUp() {
+func (s *Skhron) CleanUp() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	log.Printf("Storage cleanup started\n")
+	log.Printf("Skhron cleanup started\n")
 
 	now := time.Now()
 	deleted := 0
 
 	for s.TTLq.Len() > 0 {
-		item := heap.Pop(s.TTLq).(*ItemTTL)
+		item := heap.Pop(s.TTLq).(*expireItem)
 
 		if item.Exp.Before(now) {
 			log.Printf("Item with key \"%s\" expired %f sec ago, deleting\n", item.Key, now.Sub(item.Exp).Seconds())
@@ -135,7 +135,7 @@ func (s *Storage) CleanUp() {
 		}
 	}
 
-	log.Printf("Storage cleanup finished. %d keys deleted, %d left in queue\n", deleted, s.TTLq.Len())
+	log.Printf("Skhron cleanup finished. %d keys deleted, %d left in queue\n", deleted, s.TTLq.Len())
 }
 
 // `PeriodicCleanup` is a function that
@@ -144,7 +144,7 @@ func (s *Storage) CleanUp() {
 // It puts into `done` channel when it finishes.
 // It backups current state of the storage into file `./skhron/skhron_{timestamp}.json` on exit.
 // It runs clean up process every `period` time duration.
-func (s *Storage) PeriodicCleanup(ctx context.Context, period time.Duration, done chan struct{}) {
+func (s *Skhron) PeriodicCleanup(ctx context.Context, period time.Duration, done chan struct{}) {
 	log.Printf("Starting cleaning up process with period %.02f sec\n", period.Seconds())
 loop:
 	for {
@@ -156,7 +156,7 @@ loop:
 				log.Printf("failed to create snapshot file: %v\n", err)
 			}
 
-			log.Println("Shutting down storage cleanup process")
+			log.Println("Shutting down skhron cleanup process")
 			break loop
 		case <-time.After(period):
 			s.CleanUp()
@@ -166,7 +166,7 @@ loop:
 	done <- struct{}{}
 }
 
-func (s *Storage) JsonMarshal() ([]byte, error) {
+func (s *Skhron) JsonMarshal() ([]byte, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -182,7 +182,7 @@ func (s *Storage) JsonMarshal() ([]byte, error) {
 	return bytes, nil
 }
 
-func (s *Storage) CreateSnapshot() error {
+func (s *Skhron) CreateSnapshot() error {
 	// Marshal stroge to json
 	bytes, err := s.JsonMarshal()
 	if err != nil {
@@ -239,7 +239,7 @@ func (s *Storage) CreateSnapshot() error {
 	return nil
 }
 
-func (s *Storage) LoadSnapshot() error {
+func (s *Skhron) LoadSnapshot() error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -252,7 +252,7 @@ func (s *Storage) LoadSnapshot() error {
 
 	rs := &struct {
 		Data map[string][]byte
-		TTLq *ExpireQueue
+		TTLq *expireQueue
 	}{}
 
 	dec := json.NewDecoder(f)
@@ -261,7 +261,7 @@ func (s *Storage) LoadSnapshot() error {
 	}
 
 	for rs.TTLq.Len() > 0 {
-		item := rs.TTLq.Pop().(*ItemTTL)
+		item := rs.TTLq.Pop().(*expireItem)
 		s.Data.Set(item.Key, rs.Data[item.Key])
 		s.TTLq.Push(item)
 	}

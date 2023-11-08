@@ -9,8 +9,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/dartt0n/skhron/server"
-	"github.com/dartt0n/skhron/storage"
+	"github.com/dartt0n/skhron"
 )
 
 func main() {
@@ -21,10 +20,10 @@ func main() {
 
 	flag.Parse()
 
-	storage := storage.New()
+	storage := skhron.New()
 	storage.LoadSnapshot()
 
-	server := server.New(*addr, storage)
+	server := newServer(*addr, storage)
 
 	log.Println("Running HTTP server in goroutine")
 	go server.Run(ctx)
