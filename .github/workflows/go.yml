@@ -23,8 +23,5 @@ jobs:
       - name: Build
         run: go build -v .
 
-      - name: Test Storage
-        run: go test -v ./storage
-
-      - name: Test Server
-        run: go test -v ./server
+      - name: Test
+        run: go test -v .
