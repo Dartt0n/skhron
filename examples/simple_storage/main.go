@@ -38,4 +38,8 @@ func main() {
 	if err := storage.Put("run-timestamp", timestamp, 1*time.Hour); err != nil {
 		fmt.Printf("Put failed: %v\n", err)
 	}
+
+	if err := storage.CreateSnapshot(); err != nil {
+		fmt.Printf("Create snapshot failed: %v\n", err)
+	}
 }
