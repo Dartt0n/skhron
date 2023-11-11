@@ -4,9 +4,9 @@ var (
 	SkhronExtension = ".skh"
 )
 
-type StorageOpt func(s *Skhron)
+type StorageOpt[V any] func(s *Skhron[V])
 
-func DefaultOpts(s *Skhron) {
+func DefaultOpts[V any](s *Skhron[V]) {
 	s.SnapshotDir = ".skhron"
 	s.SnapshotName = "snapshot"
 	s.TempSnapshotDir = "/tmp/skhron"
@@ -14,26 +14,26 @@ func DefaultOpts(s *Skhron) {
 	s.Data.SetLimit(10000) // shrink map after every 10k deletions
 }
 
-func WithSnapshotDir(dir string) StorageOpt {
-	return func(s *Skhron) {
+func WithSnapshotDir[V any](dir string) StorageOpt[V] {
+	return func(s *Skhron[V]) {
 		s.SnapshotDir = dir
 	}
 }
 
-func WithSnapshotName(name string) StorageOpt {
-	return func(s *Skhron) {
+func WithSnapshotName[V any](name string) StorageOpt[V] {
+	return func(s *Skhron[V]) {
 		s.SnapshotName = name
 	}
 }
 
-func WithTempSnapshotDir(dir string) StorageOpt {
-	return func(s *Skhron) {
+func WithTempSnapshotDir[V any](dir string) StorageOpt[V] {
+	return func(s *Skhron[V]) {
 		s.TempSnapshotDir = dir
 	}
 }
 
-func WithMapLimit(limit uint64) StorageOpt {
-	return func(s *Skhron) {
+func WithMapLimit[V any](limit uint64) StorageOpt[V] {
+	return func(s *Skhron[V]) {
 		s.Data.SetLimit(limit)
 	}
 }

@@ -8,8 +8,8 @@ import (
 )
 
 func main() {
-	storage := skhron.New() // init new storage
-	storage.LoadSnapshot()  // load snapshot from file (default: `./.skhron/snapshot.skh`)
+	storage := skhron.New[string]() // init new storage
+	storage.LoadSnapshot()          // load snapshot from file (default: `./.skhron/snapshot.skh`)
 
 	storage.CleanUp() // manually run cleaup - remove expored keys
 
@@ -24,7 +24,7 @@ func main() {
 	if value, err := storage.Get("run-timestamp"); err != nil {
 		fmt.Printf("Get failed: %v\n", err)
 	} else {
-		fmt.Printf("Value: %s\n", string(value)) // convert bytes to string and print
+		fmt.Printf("Value: %s\n", value) // convert bytes to string and print
 	}
 
 	// .Delete(key) deletes the key from the storage.
@@ -35,7 +35,7 @@ func main() {
 
 	// .Put(key, value, ttl) puts value under key with time to live equal to ttl
 	// Here we put bytes of string `timestamp` under the key `run-timestamp` and time-to-live equal to 1 hour
-	if err := storage.Put("run-timestamp", []byte(timestamp), 1*time.Hour); err != nil {
+	if err := storage.Put("run-timestamp", timestamp, 1*time.Hour); err != nil {
 		fmt.Printf("Put failed: %v\n", err)
 	}
 }

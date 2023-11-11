@@ -13,7 +13,7 @@ import (
 )
 
 type server struct {
-	strg *skhron.Skhron
+	strg *skhron.Skhron[[]byte]
 	addr string
 	serv *http.Server
 }
@@ -35,7 +35,7 @@ type putReq struct {
 
 // New function creates a new server instance with a
 // specified address and initializes a new in-memory storage.
-func newServer(addr string, storage *skhron.Skhron) *server {
+func newServer(addr string, storage *skhron.Skhron[[]byte]) *server {
 	return &server{
 		strg: storage,
 		addr: addr,
@@ -65,6 +65,7 @@ func (s *server) Run(ctx context.Context) {
 		log.Fatalf("Unexpected fatal error: %v", err)
 	}
 }
+
 func (s *server) Shutdown(ctx context.Context) {
 	log.Println("Shutting down http server")
 

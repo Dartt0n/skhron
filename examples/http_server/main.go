@@ -20,7 +20,7 @@ func main() {
 
 	flag.Parse()
 
-	storage := skhron.New()
+	storage := skhron.New[[]byte]()
 	storage.LoadSnapshot()
 
 	server := newServer(*addr, storage)
