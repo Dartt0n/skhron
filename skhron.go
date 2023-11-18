@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"path"
+	"regexp"
 	"sync"
 	"time"
 
@@ -111,6 +112,23 @@ func (s *Skhron[V]) Get(key string) (V, error) {
 	}
 
 	return *new(V), errors.New("no such key: " + key)
+}
+
+func (s *Skhron[V]) GetRegex(mask *regexp.Regexp) []V {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	data := s.Data.Values()
+
+	values := make([]V, 0, len(data))
+
+	for key, value := range data {
+		if mask.Match([]byte(key)) {
+			values = append(values, value)
+		}
+	}
+
+	return values
 }
 
 // Delete is a function which deletes a key from the storage.

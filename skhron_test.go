@@ -3,6 +3,8 @@ package skhron
 import (
 	"context"
 	"reflect"
+	"regexp"
+	"slices"
 	"testing"
 	"time"
 )
@@ -301,7 +303,7 @@ func TestExists(t *testing.T) {
 	}
 }
 
-func TestSkhronGet(t *testing.T) {
+func TestGet(t *testing.T) {
 	// Set up test data or dependencies
 	s := New[int]()
 
@@ -336,6 +338,62 @@ func TestSkhronGet(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestGetRegex(t *testing.T) {
+	s := New[string]()
+
+	s.Data.Set("foo", "bar")
+	s.Data.Set("baz", "qux")
+	s.Data.Set("test1", "value1")
+	s.Data.Set("test2", "value2")
+	s.Data.Set("test_3", "value3")
+
+	tests := []struct {
+		name   string
+		regex  *regexp.Regexp
+		values []string
+	}{
+		{
+			name:   "Match foo and test",
+			regex:  regexp.MustCompile("foo|test"),
+			values: []string{"bar", "value1", "value2", "value3"},
+		},
+		{
+			name:   "Match tests",
+			regex:  regexp.MustCompile("^test\\d+$"),
+			values: []string{"value1", "value2"},
+		},
+		{
+			name:   "Match baz",
+			regex:  regexp.MustCompile("baz"),
+			values: []string{"qux"},
+		},
+		{
+			name:   "No match",
+			regex:  regexp.MustCompile("no-match"),
+			values: []string{},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			values := s.GetRegex(tt.regex)
+
+			// Check that the returned slice contains the correct values
+			if len(values) != len(tt.values) {
+				t.Errorf("Expected %d values but got: %d", len(tt.values), len(values))
+			}
+
+			for _, x := range tt.values {
+				if !slices.Contains(values, x) {
+					t.Errorf("Expected %s to be in values but it is not", x)
+				}
+			}
+
+		})
+	}
+
 }
 
 // Scenario Tests
