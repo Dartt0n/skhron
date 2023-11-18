@@ -57,12 +57,24 @@ func New[V any](opts ...StorageOpt[V]) *Skhron[V] {
 }
 
 // Put is a function which puts a value in the storage under a key.
-// It takes the key as string and the value as byte slice.
+// It takes the key as string and the value as V.
+// This function locks mutex for its operations.
+func (s *Skhron[V]) Put(key string, value V) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	s.Data.Set(key, value)
+
+	return nil
+}
+
+// PutTTL is a function which puts a value in the storage under a key with certain TTL.
+// It takes the key as string, the value as V and ttl as time.Duration.
 // It scans the entire queue to find if the item is already in the queue.
 // If it is, it updates the item and updates the queue (to maintain priority).
 // If it is not, it puts the item into the queue.
 // This function locks mutex for its operations.
-func (s *Skhron[V]) Put(key string, value V, ttl time.Duration) error {
+func (s *Skhron[V]) PutTTL(key string, value V, ttl time.Duration) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -186,7 +198,7 @@ loop:
 	done <- struct{}{}
 }
 
-// JsonMarchal is a function, which converts the struct into JSON-string bytes
+// JsonMarshal is a function, which converts the struct into JSON-string bytes
 func (s *Skhron[V]) MarshalJSON() ([]byte, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -207,6 +219,7 @@ func (s *Skhron[V]) MarshalJSON() ([]byte, error) {
 // in the temporary directory.
 // Then it checks if an older snapshot exists in snapshot directory.
 // If it is, it renames it to format "{snapshot name}_{time stamp}.skh"
+// and then moves new snapshot to the snapshot directory
 func (s *Skhron[V]) CreateSnapshot() error {
 	// Marshal stroge to json
 	bytes, err := s.MarshalJSON()

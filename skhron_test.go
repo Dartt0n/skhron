@@ -98,14 +98,14 @@ func TestNew(t *testing.T) {
 	}
 }
 
-func TestPut(t *testing.T) {
+func TestPutTTL(t *testing.T) {
 	// Create a new instance of Skhron
 	s := New[string]()
 
 	// Add some test data
-	s.Put("key1", "value1", time.Minute)
-	s.Put("key2", "value2", time.Minute)
-	s.Put("key3", "value3", time.Minute)
+	s.PutTTL("key1", "value1", time.Minute)
+	s.PutTTL("key2", "value2", time.Minute)
+	s.PutTTL("key3", "value3", time.Minute)
 
 	// Test cases
 	tests := []struct {
@@ -162,7 +162,7 @@ func TestPut(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Call the Put function
-			err := s.Put(tt.key, tt.value, tt.ttl)
+			err := s.PutTTL(tt.key, tt.value, tt.ttl)
 
 			// Check if the Put function returned an error
 			if err != nil {
@@ -301,7 +301,7 @@ func TestPutGetNew(t *testing.T) {
 
 	testValue := 150645
 
-	if err := storage.Put("test-new", testValue, time.Second); err != nil {
+	if err := storage.PutTTL("test-new", testValue, time.Second); err != nil {
 		t.Errorf("put failed: %v", err)
 	}
 
@@ -321,11 +321,11 @@ func TestPutGetOverride(t *testing.T) {
 
 	testValue := 12312
 
-	if err := storage.Put("test-override", testValue, time.Second); err != nil {
+	if err := storage.PutTTL("test-override", testValue, time.Second); err != nil {
 		t.Errorf("put failed: %v", err)
 	}
 
-	if err := storage.Put("test-override", testValue, time.Second); err != nil {
+	if err := storage.PutTTL("test-override", testValue, time.Second); err != nil {
 		t.Errorf("put failed: %v", err)
 	}
 
@@ -355,7 +355,7 @@ func TestDeleteExisting(t *testing.T) {
 
 	testValue := 150645
 
-	if err := storage.Put("test-delete-existing", testValue, time.Second); err != nil {
+	if err := storage.PutTTL("test-delete-existing", testValue, time.Second); err != nil {
 		t.Errorf("put failed: %v", err)
 	}
 
@@ -386,7 +386,7 @@ func TestExistExisting(t *testing.T) {
 
 	testValue := 231
 
-	if err := storage.Put("test-exist-existing", testValue, time.Second); err != nil {
+	if err := storage.PutTTL("test-exist-existing", testValue, time.Second); err != nil {
 		t.Errorf("put failed: %v", err)
 	}
 
@@ -415,7 +415,7 @@ func TestCleanup(t *testing.T) {
 	storage := New[string]()
 	go storage.PeriodicCleanup(ctx, 500*time.Millisecond, done)
 
-	if err := storage.Put("test", "hello world", 500*time.Millisecond); err != nil {
+	if err := storage.PutTTL("test", "hello world", 500*time.Millisecond); err != nil {
 		t.Errorf("put failed: %v", err)
 	}
 
@@ -446,7 +446,7 @@ func TestStructGeneric(t *testing.T) {
 		Age: 5,
 	}
 
-	s.Put("test-value", testValue, 1*time.Hour)
+	s.PutTTL("test-value", testValue, 1*time.Hour)
 
 	if v, err := s.Get("test-value"); err != nil || v != testValue {
 		t.Errorf("get failed: %v", err)

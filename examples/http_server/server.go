@@ -143,7 +143,7 @@ func (s *server) servePost(req *http.Request) serverRes {
 		return serverRes{Status: 422, Body: []byte(err.Error())}
 	}
 
-	if err := s.strg.Put(key, []byte(value.Data), time.Duration(value.TTL)*time.Second); err != nil {
+	if err := s.strg.PutTTL(key, []byte(value.Data), time.Duration(value.TTL)*time.Second); err != nil {
 		return serverRes{Status: 500, Body: []byte(err.Error())}
 	}
 
@@ -187,7 +187,7 @@ func (s *server) servePut(req *http.Request) serverRes {
 		return serverRes{Status: 422, Body: []byte(err.Error())}
 	}
 
-	if err := s.strg.Put(key, []byte(value.Data), time.Duration(value.TTL)*time.Second); err != nil {
+	if err := s.strg.PutTTL(key, []byte(value.Data), time.Duration(value.TTL)*time.Second); err != nil {
 		return serverRes{Status: 500, Body: []byte(err.Error())}
 	}
 
