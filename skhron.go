@@ -330,6 +330,12 @@ func (s *Skhron[V]) LoadSnapshot() error {
 	s.TTLq = newExpQueue()
 	heap.Init(s.TTLq)
 
+	// add no-ttl items
+	for key, value := range rs.Data {
+		s.Data.Set(key, value)
+	}
+
+	// add ttl items
 	for rs.TTLq.Len() > 0 {
 		item := rs.TTLq.Pop().(*expireItem)
 		s.Data.Set(item.Key, rs.Data[item.Key])
