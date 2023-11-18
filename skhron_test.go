@@ -98,6 +98,51 @@ func TestNew(t *testing.T) {
 	}
 }
 
+func TestPut(t *testing.T) {
+	testCases := []struct {
+		name  string
+		key   string
+		value string
+	}{
+		{
+			name:  "Test 1",
+			key:   "key1",
+			value: "value1",
+		},
+		{
+			name:  "Test 2",
+			key:   "key2",
+			value: "value2",
+		},
+		{
+			name:  "Test 3", // override last one
+			key:   "key2",
+			value: "value4",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// Initialize Skhron with StringValue type
+			s := New[string]()
+
+			// Call Put function
+			err := s.Put(tc.key, tc.value)
+
+			// Check if Put function does not return an error
+			if err != nil {
+				t.Errorf("Put() error = %v, wantErr nil", err)
+				return
+			}
+
+			// Check if the value is stored correctly under the key
+			if !reflect.DeepEqual(s.Data.Get(tc.key), tc.value) {
+				t.Errorf("Put() = %v, want %v", s.Data.Get(tc.key), tc.value)
+			}
+		})
+	}
+}
+
 func TestPutTTL(t *testing.T) {
 	// Create a new instance of Skhron
 	s := New[string]()
