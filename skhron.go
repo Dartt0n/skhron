@@ -114,6 +114,10 @@ func (s *Skhron[V]) Get(key string) (V, error) {
 	return *new(V), errors.New("no such key: " + key)
 }
 
+// GetRegex is a function which fetches values in the storage
+// under keys, which match the mask regex.
+// It takes the regex as parameter.
+// This function locks mutex for its operations.
 func (s *Skhron[V]) GetRegex(mask *regexp.Regexp) []V {
 	s.mu.Lock()
 	defer s.mu.Unlock()

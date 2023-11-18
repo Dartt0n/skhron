@@ -48,7 +48,7 @@ func main() {
 
 	// .Put(key, value, ttl) puts value under key with time to live equal to ttl
 	// Here we put bytes of string `timestamp` under the key `run-timestamp` and time-to-live equal to 1 hour
-	if err := storage.Put("run-timestamp", []byte(timestamp), 1*time.Hour); err != nil {
+	if err := storage.PutTTL("run-timestamp", []byte(timestamp), 1*time.Hour); err != nil {
 		fmt.Printf("Put failed: %v\n", err)
 	}
 }
